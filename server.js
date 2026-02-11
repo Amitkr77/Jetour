@@ -13,7 +13,7 @@ app.use('/api/v1', vehicle_route);
 
 
 app.get("/", (req, res) => {
-    res.send("Jetuor backend running 🚗🔥");
+    res.send("Jetour backend running 🚗🔥");
 });
 
 const PORT = process.env.PORT || 3000;
