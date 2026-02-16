@@ -1,23 +1,11 @@
 const Driver = require('./driver.model');
 
-exports.createDriver = async (data) => {
-  return Driver.create(data);
-};
+exports.createDriver = async (data) => Driver.create(data);
 
-exports.getAllDrivers = async () => {
-  return Driver.find()
-    .populate('assigned_vehicle')
-    .sort({ created_at: -1 });
-};
+exports.getAllDrivers = async () => Driver.find().sort({ created_at: -1 });
 
-exports.getDriverById = async (id) => {
-  return Driver.findById(id).populate('assigned_vehicle');
-};
+exports.getDriverById = async (id) => Driver.findById(id)
 
-exports.updateDriver = async (id, data) => {
-  return Driver.findByIdAndUpdate(id, data, { new: true });
-};
+exports.updateDriver = async (id, data) => Driver.findByIdAndUpdate(id, data, { returnDocument: 'after' });
 
-exports.deleteDriver = async (id) => {
-  return Driver.findByIdAndDelete(id);
-};
+exports.deleteDriver = async (id) => Driver.findByIdAndDelete(id);

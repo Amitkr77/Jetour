@@ -3,10 +3,10 @@ const router = express.Router();
 const controller = require('./vehicle.controller');
 const { protect } = require('../../middlewares/auth.middleware');
 
-router.post('/', protect, controller.createVehicle);
-router.get('/', protect, controller.getAllVehicles);
-router.get('/:id', protect, controller.getVehicleDetail);
-router.put('/:id', protect, controller.updateVehicle);
-router.delete('/:id', protect, controller.deleteVehicle);
+router.post('/',  controller.createVehicle);
+router.get('/',  controller.getAllVehicles);
+router.get('/:id',  controller.getVehicleDetail);
+router.put('/:id',  controller.updateVehicle);
+router.delete('/:id',  controller.deleteVehicle);
 
 module.exports = router;

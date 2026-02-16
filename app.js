@@ -18,11 +18,11 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/customers', customerRoutes)
-app.use('/api/v1/technicians',technicianRoutes )
+app.use('/api/v1/customers', customerRoutes);
+app.use('/api/v1/technicians',technicianRoutes);
 app.use('/api/v1/drivers', require('./modules/driver/driver.routes'));
 app.use('/api/v1/vehicles', require('./modules/vehicle/vehicle.routes'));
-
+app.use('/api/v1/service-vans', require('./modules/serviceVan/serviceVan.routes'));
 
 // app.use('/api/v1/customers', customerRoutes)
 

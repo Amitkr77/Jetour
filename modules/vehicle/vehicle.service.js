@@ -1,21 +1,12 @@
 const Vehicle = require('./vehicle.model');
 
-exports.createVehicle = async (data) => {
-  return Vehicle.create(data);
-};
+exports.createVehicle = async (data) => Vehicle.create(data);
 
-exports.getAllVehicles = async () => {
-  return Vehicle.find().populate('assigned_driver').sort({ created_at: -1 });
-};
+exports.getAllVehicles = async () => Vehicle.find().sort({ created_at: -1 });
 
-exports.getVehicleById = async (id) => {
-  return Vehicle.findById(id).populate('assigned_driver');
-};
+exports.getVehicleById = async (id) => Vehicle.findById(id); // removed populate
 
-exports.updateVehicle = async (id, data) => {
-  return Vehicle.findByIdAndUpdate(id, data, { new: true });
-};
+exports.updateVehicle = async (id, data) =>
+  Vehicle.findByIdAndUpdate(id, data, { returnDocument: 'after' }); // updated for deprecation warning
 
-exports.deleteVehicle = async (id) => {
-  return Vehicle.findByIdAndDelete(id);
-};
+exports.deleteVehicle = async (id) => Vehicle.findByIdAndDelete(id);

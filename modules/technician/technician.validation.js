@@ -13,7 +13,7 @@ exports.createTechnicianSchema = Joi.object({
 
   gender: Joi.string().valid('male', 'female').allow('', null),
 
-  image: Joi.string().uri().allow('', null),
+  image: Joi.any(),
 
   rating: Joi.number().min(0).max(5).optional(),
 
@@ -33,7 +33,7 @@ exports.updateTechnicianSchema = Joi.object({
 
   gender: Joi.string().valid('male', 'female'),
 
-  image: Joi.string().uri().allow('', null),
+  image: Joi.any(),
 
   rating: Joi.number().min(0).max(5),
 

@@ -1,49 +1,29 @@
 const mongoose = require('mongoose');
+const Counter = require('../../model/counter.model');
 
 const vehicleSchema = new mongoose.Schema(
   {
-    plate_number: {
+    id: {
       type: String,
-      required: true,
       unique: true
     },
 
-    make: {
+    vehicle_category: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    model: {
+    vehicle_model: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
-    year: {
-      type: Number
-    },
-
-    color: {
-      type: String
-    },
-
-    vin_number: {
-      type: String
-    },
-
-    registration_expiry: {
-      type: Date
-    },
-
-    assigned_driver: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Driver',
-      default: null
-    },
-
-    status: {
+    vehicle_image: {
       type: String,
-      enum: ['Available', 'Assigned', 'Under Maintenance'],
-      default: 'Available'
+      required: true,
+      trim: true
     }
   },
   {
@@ -53,5 +33,28 @@ const vehicleSchema = new mongoose.Schema(
     }
   }
 );
+
+
+// 🔥 PRE-SAVE HOOK FOR AUTO ID
+vehicleSchema.pre('save', async function () {
+  if (this.isNew) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: 'vehicle_id' },  // unique counter name
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+
+      const paddedSeq = String(counter.seq).padStart(3, '0');
+      this.id = `VEH-${paddedSeq}`;
+
+
+    } catch (error) {
+      console.error(error);
+    }
+  } else {
+    next();
+  }
+});
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

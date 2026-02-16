@@ -1,17 +1,19 @@
 const mongoose = require('mongoose');
+const Counter = require('../../model/counter.model')
 
 const driverSchema = new mongoose.Schema(
   {
+    driver_id: {
+      type: String,
+      unique: true
+    },
+
     name: {
       type: String,
       required: true
     },
 
-    phone_country_code: {
-      type: String
-    },
-
-    phone_number: {
+    contact: {
       type: String,
       required: true
     },
@@ -20,7 +22,7 @@ const driverSchema = new mongoose.Schema(
       type: String
     },
 
-    civil_id_number: {
+    civil_id: {
       type: String
     },
 
@@ -28,29 +30,26 @@ const driverSchema = new mongoose.Schema(
       type: String
     },
 
-    license_number: {
+    gender: {
+      type: String,
+      enum: ['male', 'female']
+    },
+
+    rating: {
+      type: Number,
+      default: 0.0,
+      min: 0,
+      max: 5
+    },
+
+    image: {
       type: String
-    },
-
-    license_expiry: {
-      type: Date
-    },
-
-    joining_date: {
-      type: Date,
-      default: Date.now
-    },
-
-    assigned_vehicle: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Vehicle',
-      default: null
     },
 
     status: {
       type: String,
-      enum: ['Active', 'Inactive', 'Blocked'],
-      default: 'Active'
+      enum: ['active', 'inactive', 'blocked'],
+      default: 'active'
     }
   },
   {
@@ -60,5 +59,25 @@ const driverSchema = new mongoose.Schema(
     }
   }
 );
+
+driverSchema.pre('save', async function () {
+  if (!this.isNew) return ;
+
+  try {
+    const counter = await Counter.findByIdAndUpdate(
+      'driver',
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const paddedNumber = String(counter.seq).padStart(3, '0');
+    this.driver_id = `DVR-${paddedNumber}`;  
+
+    ;
+  } catch (error) {
+    console.error(error);
+    
+  }
+});
 
 module.exports = mongoose.model('Driver', driverSchema);
