@@ -5,8 +5,8 @@ const morgan = require('morgan');
 
 const errorMiddleware = require('./middlewares/error.middleware');
 const adminRoutes = require('./modules/admin/admin.routes');
-const customerRoutes =require('./modules/customers/customer.routes')
-const technicianRoutes =require('./modules/technician/technician.routes')
+const customerRoutes = require('./modules/customers/customer.routes')
+const technicianRoutes = require('./modules/technician/technician.routes')
 
 
 
@@ -19,10 +19,12 @@ app.use(express.json());
 
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/customers', customerRoutes);
-app.use('/api/v1/technicians',technicianRoutes);
+app.use('/api/v1/technicians', technicianRoutes);
 app.use('/api/v1/drivers', require('./modules/driver/driver.routes'));
 app.use('/api/v1/vehicles', require('./modules/vehicle/vehicle.routes'));
 app.use('/api/v1/service-vans', require('./modules/serviceVan/serviceVan.routes'));
+app.use("/api/v1/packages", require("./modules/package/package.routes"));
+
 
 // app.use('/api/v1/customers', customerRoutes)
 

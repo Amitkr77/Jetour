@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const vehicleService = require('./vehicle.service');
 const validation = require('./vehicle.validation');
-const parser = require('../../utils/uploadImage'); 
-
+const createUploader = require('../../utils/uploadImage');
+const parser = createUploader('vehicle');
 // Create vehicle with optional image upload
 exports.createVehicle = [
   parser.single('vehicle_image'), // if you send file

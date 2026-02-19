@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const technicianService = require('./technician.service');
 const validation = require('./technician.validation');
-const parser = require('../../utils/uploadImage'); 
+const createUploader = require('../../utils/uploadImage');
+const parser = createUploader('technician');
 
 // Create Technician with optional image upload
 exports.createTechnician = [

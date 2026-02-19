@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const driverService = require('./driver.service');
 const validation = require('./driver.validation');
-const parser = require('../../utils/uploadImage');
-
+const createUploader = require('../../utils/uploadImage');
+const parser = createUploader('driver');
 // Create driver with optional image upload
 exports.createDriver = [
   parser.single('image'),
