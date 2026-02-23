@@ -1,0 +1,133 @@
+const mongoose = require("mongoose");
+
+const bookingSchema = new mongoose.Schema(
+  {
+    booking_id: {
+      type: String,
+      unique: true
+    },
+
+    created_by: {
+      type: String,
+      enum: ["customer", "admin"],
+      required: true
+    },
+
+    // ---------------- CUSTOMER DETAILS ----------------
+    customer: {
+      name: { type: String, required: true },
+      email: { type: String },
+      gender: { type: String, enum: ["Male", "Female"] },
+      phone: { type: String, required: true },
+      paci_number: { type: String }
+    },
+
+    // ---------------- ADDRESS ----------------
+    address: {
+      governorate: String,
+      area: String,
+      block: String,
+      street: String,
+      building_no: String,
+      floor_no: String,
+      flat_no: String,
+
+      google_location: {
+        lat: Number,
+        lng: Number,
+        formatted_address: String
+      }
+    },
+
+    // ---------------- VEHICLE SNAPSHOT ----------------
+    vehicle: {
+      vehicle_model: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "VehicleModel",
+        required: true
+      },
+      registration_number: { type: String, required: true },
+      model_year: { type: Number, required: true },
+      mileage: { type: Number, required: true }
+    },
+
+    // ---------------- PACKAGE SNAPSHOT ----------------
+    package: {
+      package_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Package",
+        required: true
+      },
+      name: String,
+      worktime: Number,
+      base_price: Number,
+      service_fee: Number,
+      total_amount: Number
+    },
+
+    // ---------------- SCHEDULE ----------------
+    start_time: {
+      type: Date,
+      required: true
+    },
+
+    end_time: {
+      type: Date,
+      required: true
+    },
+
+    // ---------------- ASSIGNMENT ----------------
+    assignment: {
+      driver: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Driver",
+        default: null
+      },
+      technician: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Technician",
+        default: null
+      },
+      service_van: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ServiceVan",
+        default: null
+      },
+      assigned_at: Date
+    },
+
+    // ---------------- PAYMENT ----------------
+    payment: {
+      method: {
+        type: String,
+        enum: ["card", "knet", "tap"],
+        default: "card"
+      },
+      status: {
+        type: String,
+        enum: ["pending", "paid", "failed"],
+        default: "pending"
+      },
+      transaction_id: String
+    },
+
+    // ---------------- STATUS ----------------
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "paid",
+        "confirmed",
+        "in-progress",
+        "completed",
+        "cancelled"
+      ],
+      default: "pending"
+    },
+
+    additional_notes: String
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Booking", bookingSchema);

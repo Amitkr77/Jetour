@@ -51,6 +51,16 @@ const driverSchema = new mongoose.Schema(
       enum: ['active', 'inactive', 'blocked'],
       default: 'active'
     }
+    , availability: {
+      type: String,
+      enum: ["available", "busy", "on_leave"],
+      default: "available"
+    },
+    assigned_van: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ServiceVan",
+      default: null
+    }
   },
   {
     timestamps: {
@@ -61,7 +71,7 @@ const driverSchema = new mongoose.Schema(
 );
 
 driverSchema.pre('save', async function () {
-  if (!this.isNew) return ;
+  if (!this.isNew) return;
 
   try {
     const counter = await Counter.findByIdAndUpdate(
@@ -71,12 +81,12 @@ driverSchema.pre('save', async function () {
     );
 
     const paddedNumber = String(counter.seq).padStart(3, '0');
-    this.driver_id = `DVR-${paddedNumber}`;  
+    this.driver_id = `DVR-${paddedNumber}`;
 
     ;
   } catch (error) {
     console.error(error);
-    
+
   }
 });
 

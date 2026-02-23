@@ -1,13 +1,19 @@
 const mongoose = require('mongoose');
 
 const serviceVanSchema = new mongoose.Schema(
+
   {
+    driver: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Driver",
+      default: null
+    },
     vehicle_model: {
       type: String,
       required: true
     },
 
-    mileage: {  
+    mileage: {
       type: Number,
       required: true
     },

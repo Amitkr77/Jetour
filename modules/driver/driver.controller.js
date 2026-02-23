@@ -149,3 +149,34 @@ exports.deleteDriver = async (req, res, next) => {
     next(err);
   }
 };
+
+// Driver availability
+exports.updateAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { availability } = req.body;
+
+    const driver = await Driver.findById(id);
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
+    }
+
+    driver.availability = availability;
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Availability updated",
+      data: driver
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

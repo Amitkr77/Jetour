@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const serviceVanService = require('./serviceVan.service');
 const validation = require('./serviceVan.validation');
+const ServiceVan = require("./serviceVan.model");
+const Driver = require("../driver/driver.model");
 
 exports.createServiceVan = async (req, res, next) => {
   try {
@@ -140,5 +142,73 @@ exports.deleteServiceVan = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+
+
+exports.assignDriver = async (req, res) => {
+  try {
+    const { vanId } = req.params;
+    const { driver_id } = req.body;
+
+    const van = await ServiceVan.findById(vanId);
+    if (!van) {
+      return res.status(404).json({
+        success: false,
+        message: "Service van not found"
+      });
+    }
+
+    const driver = await Driver.findById(driver_id);
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
+    }
+
+    if (driver.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Driver is not active"
+      });
+    }
+
+    // 🔥 Remove driver from previous van
+    if (driver.assigned_van) {
+      await ServiceVan.findByIdAndUpdate(
+        driver.assigned_van,
+        { driver: null }
+      );
+    }
+
+    // 🔥 Remove old driver from this van
+    if (van.driver) {
+      await Driver.findByIdAndUpdate(
+        van.driver,
+        { assigned_van: null }
+      );
+    }
+
+    // ✅ Assign new driver
+    van.driver = driver._id;
+    await van.save();
+
+    driver.assigned_van = van._id;
+    driver.availability = "available"; // reset to available
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Driver assigned successfully",
+      data: van
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
 };

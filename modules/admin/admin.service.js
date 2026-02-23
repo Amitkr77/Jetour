@@ -42,11 +42,44 @@ exports.loginAdmin = async ({ email, password }) => {
 
   return {
     token,
-    admin: {
+    data: {
       id: admin._id,
       name: admin.name,
       email: admin.email,
       role: admin.role
     }
   };
+};
+
+exports.updateProfile = async (adminId, payload) => {
+  return await Admin.findByIdAndUpdate(
+    adminId,
+    payload,
+    { new: true }
+  ).select("-password");
+};
+
+exports.changePassword = async (adminId, currentPassword, newPassword) => {
+  const admin = await Admin.findById(adminId);
+
+  if (!admin) {
+    throw new Error("Admin not found");
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, admin.password);
+
+  if (!isMatch) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  admin.password = hashedPassword;
+
+  await admin.save();
+
+  return true;
+};
+
+exports.getProfile = async (adminId) => {
+  return await Admin.findById(adminId).select("-password");
 };
