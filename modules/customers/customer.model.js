@@ -54,7 +54,8 @@ const customerSchema = new mongoose.Schema({
   civil_id: {
     type: String,
     trim: true,
-    index: true
+    index: true,
+    unique: true,
   },
 
   gender: {
@@ -64,7 +65,8 @@ const customerSchema = new mongoose.Schema({
 
   passport_number: {
     type: String,
-    trim: true
+    trim: true,
+    unique: true,
   },
 
   nationality: {

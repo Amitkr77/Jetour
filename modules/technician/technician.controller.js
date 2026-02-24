@@ -167,7 +167,7 @@ exports.verifyTechnician = async (req, res, next) => {
 
     // If query params not present → skip this controller
     if (!technician_id || !password) {
-      return next(); // allow normal /technician routes to work
+      return next(); 
     }
 
     const technician = await Technician

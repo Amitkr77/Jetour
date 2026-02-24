@@ -6,7 +6,6 @@ const technicianSchema = new mongoose.Schema(
   {
     technician_id: {
       type: String,
-
       unique: true
     },
 
@@ -17,7 +16,8 @@ const technicianSchema = new mongoose.Schema(
 
     contact: {
       type: String,
-      required: true
+      required: true,
+      unique: true
     },
 
     email: {
@@ -25,7 +25,9 @@ const technicianSchema = new mongoose.Schema(
     },
 
     civil_id: {
-      type: String
+      type: String,
+      unique: true,
+      sparse: true
     },
 
     nationality: {

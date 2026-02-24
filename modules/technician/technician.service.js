@@ -12,15 +12,3 @@ exports.updateTechnician = async (id, data) =>
 exports.deleteTechnician = async (id) => Technician.findByIdAndDelete(id);
 
 
-exports.verifyTechnician = async (technician_id, password) => {
-  const technician = await Technician.findOne({ technician_id }).select('+password');
-
-  if (!technician) return null;
-
-  const bcrypt = require('bcrypt');
-  const isMatch = await bcrypt.compare(password, technician.password);
-
-  if (!isMatch) return null;
-
-  return technician;
-};

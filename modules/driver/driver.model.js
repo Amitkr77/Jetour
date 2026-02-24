@@ -17,15 +17,18 @@ const driverSchema = new mongoose.Schema(
 
     contact: {
       type: String,
-      required: true
+      required: true,
+      unique: true
     },
 
     email: {
       type: String
     },
 
-    civil_id: {
-      type: String
+     civil_id: {
+      type: String,
+      unique: true,
+      sparse: true
     },
 
     nationality: {
