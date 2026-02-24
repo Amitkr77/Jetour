@@ -12,7 +12,21 @@ const createUploader = (folderName) => {
     }
   });
 
-  return multer({ storage });
+  const fileFilter = (req, file, cb) => {
+    // 🔹 Accept only image files
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname), false);
+    }
+    cb(null, true);
+  };
+
+  return multer({
+    storage,
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5 MB
+    },
+    fileFilter
+  });
 };
 
 module.exports = createUploader;

@@ -16,6 +16,8 @@ exports.createDriverSchema = Joi.object({
   image: Joi.any(),
 
   rating: Joi.number().min(0).max(5).optional(),
+  password: Joi.string().min(6).required(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional(),
 
   status: Joi.string().valid('active', 'inactive', 'blocked').optional()
 }).unknown(false);
@@ -36,6 +38,8 @@ exports.updateDriverSchema = Joi.object({
   image: Joi.any(),
 
   rating: Joi.number().min(0).max(5),
+  password: Joi.string().min(6).optional(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/),
 
   status: Joi.string().valid('active', 'inactive', 'blocked')
 }).unknown(false);

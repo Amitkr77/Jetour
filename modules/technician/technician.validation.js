@@ -17,7 +17,9 @@ exports.createTechnicianSchema = Joi.object({
 
   rating: Joi.number().min(0).max(5).optional(),
 
-  status: Joi.string().valid('active', 'inactive', 'blocked').optional()
+  status: Joi.string().valid('active', 'inactive', 'blocked').optional(),
+  password: Joi.string().min(6).required(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional(),
 });
 
 exports.updateTechnicianSchema = Joi.object({
@@ -37,5 +39,7 @@ exports.updateTechnicianSchema = Joi.object({
 
   rating: Joi.number().min(0).max(5),
 
-  status: Joi.string().valid('active', 'inactive', 'blocked')
+  status: Joi.string().valid('active', 'inactive', 'blocked'),
+  password: Joi.string().min(6).optional(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/),
 });

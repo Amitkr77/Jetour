@@ -3,30 +3,42 @@ const serviceVanService = require('./serviceVan.service');
 const validation = require('./serviceVan.validation');
 const ServiceVan = require("./serviceVan.model");
 const Driver = require("../driver/driver.model");
+const createUploader = require('../../utils/uploadImage');
+const parser = createUploader('serviceVan');
 
-exports.createServiceVan = async (req, res, next) => {
-  try {
-    const { error } = validation.createServiceVanSchema.validate(req.body);
+exports.createServiceVan = [
+  parser.single('image'),
+  async (req, res, next) => {
+    try {
+      const { error } = validation.createServiceVanSchema.validate(req.body);
 
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-        data: null
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          data: null
+        });
+      }
+
+      const image = req.file ? req.file.path : req.body.image;
+
+      const van = await serviceVanService.createServiceVan({
+        ...req.body,
+        image
       });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Service van created successfully',
+        data: van
+      });
+    } catch (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+      next(err);
     }
-
-    const van = await serviceVanService.createServiceVan(req.body);
-
-    return res.status(201).json({
-      success: true,
-      message: 'Service van created successfully',
-      data: van
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+  }]
 
 exports.getAllServiceVans = async (req, res, next) => {
   try {
@@ -92,9 +104,14 @@ exports.updateServiceVan = async (req, res, next) => {
       });
     }
 
+    const updateData = {
+      ...req.body,
+      ...(req.file && { image: req.file.path })
+    };
+
     const van = await serviceVanService.updateServiceVan(
       req.params.id,
-      req.body
+      updateData
     );
 
     if (!van) {
@@ -145,8 +162,6 @@ exports.deleteServiceVan = async (req, res, next) => {
   }
 };
 
-
-
 exports.assignDriver = async (req, res) => {
   try {
     const { vanId } = req.params;
@@ -196,7 +211,7 @@ exports.assignDriver = async (req, res) => {
     await van.save();
 
     driver.assigned_van = van._id;
-    driver.availability = "available"; // reset to available
+    driver.availability = "available";
     await driver.save();
 
     res.json({

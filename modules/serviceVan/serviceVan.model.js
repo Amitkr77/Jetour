@@ -1,13 +1,32 @@
 const mongoose = require('mongoose');
 
 const serviceVanSchema = new mongoose.Schema(
-
   {
     driver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Driver",
       default: null
     },
+    technician: { type: mongoose.Schema.Types.ObjectId, ref: "Technician", default: null },
+
+    // 🔹 Driver ID 
+    driver_id: {
+      type: String
+    },
+
+    // 🔹 Technician ID (T-001)
+    technician_id: {
+      type: String
+    },
+
+    // 🔹 Vehicle registration number
+    registration_number: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true
+    },
+
     vehicle_model: {
       type: String,
       required: true
@@ -21,6 +40,11 @@ const serviceVanSchema = new mongoose.Schema(
     last_service_date: {
       type: Date,
       required: true
+    },
+
+    // 🔹 Image
+    image: {
+      type: String
     },
 
     status: {
