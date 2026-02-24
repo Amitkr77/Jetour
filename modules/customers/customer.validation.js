@@ -6,80 +6,61 @@ exports.createCustomerSchema = Joi.object({
   contact_number: Joi.string()
     .pattern(/^\+[1-9]\d{1,14}$/)
     .required()
-    .messages({
-      'string.pattern.base': 'Contact number must be in E.164 format'
-    }),
+    .messages({ 'string.pattern.base': 'Contact number must be in E.164 format (+country code)' }),
 
-  email: Joi.string().email().allow('', null),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional(),
 
-  civil_id: Joi.string().allow('', null),
+  email: Joi.string().email().lowercase().trim().optional(), civil_id: Joi.string().trim().required(),
 
-  gender: Joi.string().valid('Male', 'Female', 'Other'),
+  gender: Joi.string().valid('Male', 'Female', 'Other').allow(null),
 
-  passport_number: Joi.string().allow('', null),
+  passport_number: Joi.string().trim().allow('', null),
 
-  nationality: Joi.string().allow('', null),
+  lat: Joi.number().min(-90).max(90).optional(),
+  lng: Joi.number().min(-180).max(180).optional(),
 
-  preferred_language: Joi.string().valid('Arabic', 'English'),
+  nationality: Joi.string().trim().allow('', null),
 
-  date_of_birth: Joi.date(),
+  preferred_language: Joi.string().valid('Arabic', 'English').default('English'),
 
-  address: Joi.object({
-    full_address: Joi.object({
-      governorate: Joi.string().allow('', null),
-      area: Joi.string().allow('', null),
-      block: Joi.string().allow('', null),
-      street: Joi.string().allow('', null),
-      building_number: Joi.string().allow('', null),
-      floor_number: Joi.string().allow('', null),
-      flat_number: Joi.string().allow('', null),
-      paci_details: Joi.string().allow('', null)
-    }),
+  date_of_birth: Joi.date().allow(null),
 
-    google_location: Joi.string().allow('', null)
-
+  full_address: Joi.object({
+    governorate: Joi.string().trim().allow(''),
+    area: Joi.string().trim().allow(''),
+    block: Joi.string().trim().allow(''),
+    street: Joi.string().trim().allow(''),
+    building_number: Joi.string().trim().allow(''),
+    floor_number: Joi.string().trim().allow(''),
+    flat_number: Joi.string().trim().allow(''),
+    paci_details: Joi.string().trim().allow('')
   }).optional()
 });
 
 exports.updateCustomerSchema = Joi.object({
   name: Joi.string().trim(),
-
   contact_number: Joi.string()
     .pattern(/^\+[1-9]\d{1,14}$/)
-    .messages({
-      'string.pattern.base': 'Contact number must be in E.164 format'
-    }),
-
-  email: Joi.string().email().allow('', null),
-
-  civil_id: Joi.string().allow('', null),
-
+    .messages({ 'string.pattern.base': 'Contact number must be in E.164 format (+country code)' }),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/),
+  email: Joi.string().email().lowercase().trim().allow('', null),
+  civil_id: Joi.string().trim(),
   gender: Joi.string().valid('Male', 'Female', 'Other'),
-
-  passport_number: Joi.string().allow('', null),
-
-  nationality: Joi.string().allow('', null),
-
+  passport_number: Joi.string().trim().allow(''),
+  nationality: Joi.string().trim().allow(''),
   status: Joi.string().valid('Active', 'Inactive', 'Blocked'),
-
   preferred_language: Joi.string().valid('Arabic', 'English'),
-
-  date_of_birth: Joi.date(),
-
-  address: Joi.object({
-    full_address: Joi.object({
-      governorate: Joi.string().allow('', null),
-      area: Joi.string().allow('', null),
-      block: Joi.string().allow('', null),
-      street: Joi.string().allow('', null),
-      building_number: Joi.string().allow('', null),
-      floor_number: Joi.string().allow('', null),
-      flat_number: Joi.string().allow('', null),
-      paci_details: Joi.string().allow('', null)
-    }),
-
-    google_location: Joi.string().allow('', null)
-
-  })
-});
-
+  lat: Joi.number().min(-90).max(90),
+  lng: Joi.number().min(-180).max(180),
+  date_of_birth: Joi.date().allow(null),
+  full_address: Joi.object({
+    governorate: Joi.string().trim().allow(''),
+    area: Joi.string().trim().allow(''),
+    block: Joi.string().trim().allow(''),
+    street: Joi.string().trim().allow(''),
+    building_number: Joi.string().trim().allow(''),
+    floor_number: Joi.string().trim().allow(''),
+    flat_number: Joi.string().trim().allow(''),
+    paci_details: Joi.string().trim().allow('')
+  }).optional()
+}).min(1);

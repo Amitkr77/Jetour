@@ -5,20 +5,15 @@ const Counter = require('../../model/counter.model');
 
 
 const addressSchema = new mongoose.Schema({
-  full_address: {
-    governorate: { type: String, trim: true },
-    area: { type: String, trim: true },
-    block: { type: String, trim: true },
-    street: { type: String, trim: true },
-    building_number: { type: String, trim: true },
-    floor_number: { type: String, trim: true },
-    flat_number: { type: String, trim: true },
-    paci_details: { type: String, trim: true }
-  },
-  google_location: {
-    type: String,
-    trim: true
-  }
+  governorate: { type: String, trim: true },
+  area: { type: String, trim: true },
+  block: { type: String, trim: true },
+  street: { type: String, trim: true },
+  building_number: { type: String, trim: true },
+  floor_number: { type: String, trim: true },
+  flat_number: { type: String, trim: true },
+  paci_details: { type: String, trim: true }
+
 }, { _id: false });
 
 
@@ -41,7 +36,13 @@ const customerSchema = new mongoose.Schema({
     unique: true,
     match: [/^\+[1-9]\d{1,14}$/, 'Invalid phone number format. Use E.164 format']
   },
-
+  country_code: {
+    type: String,
+    trim: true,
+    match: [/^\+\d{1,3}$/, 'Invalid country code format. Use + followed by 1 to 3 digits']
+  },
+  lat: { type: Number },
+  lng: { type: Number },
   email: {
     type: String,
     lowercase: true,
@@ -86,8 +87,13 @@ const customerSchema = new mongoose.Schema({
   date_of_birth: {
     type: Date
   },
+  password: {
+    type: String,
+    // required: true,
+    select: false   
+  },
 
-  address: addressSchema
+  full_address: addressSchema
 
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
@@ -108,7 +114,6 @@ customerSchema.pre('save', async function () {
 
   } catch (error) {
     console.log(error);
-    
   }
 });
 

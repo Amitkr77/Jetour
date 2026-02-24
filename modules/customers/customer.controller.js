@@ -1,6 +1,10 @@
 const customerService = require('./customer.service');
 const validation = require('./customer.validation');
 
+
+
+
+
 exports.createCustomer = async (req, res, next) => {
   try {
     const { error } = validation.createCustomerSchema.validate(req.body);
@@ -19,8 +23,11 @@ exports.createCustomer = async (req, res, next) => {
       message: "Customer created successfully",
       data: customer
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    if (error.code === 11000) {
+      throw new Error("Duplicate field value entered");
+    }
+    throw error;
   }
 };
 
