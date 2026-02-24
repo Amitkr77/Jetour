@@ -14,6 +14,7 @@ const driverRoutes = require('./modules/driver/driver.routes')
 const vehicleRoutes = require('./modules/vehicle/vehicle.routes')
 const serviceVanRoutes = require('./modules/serviceVan/serviceVan.routes')
 const packagesRoutes = require("./modules/package/package.routes")
+const inventoryRoutes = require('./modules/inventory/inventory.routes')
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/service-vans', serviceVanRoutes);
 app.use("/api/v1/packages", packagesRoutes);
 app.use("/api/v1/admin/settings", settingsRoutes);
+app.use('/api/v1/inventory_item', inventoryRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 
