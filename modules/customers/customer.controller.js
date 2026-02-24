@@ -33,12 +33,18 @@ exports.createCustomer = async (req, res, next) => {
 
 exports.getAllCustomers = async (req, res, next) => {
   try {
-    const customers = await customerService.getAllCustomers();
+    const result = await customerService.getAllCustomers(req.query);
 
     res.status(200).json({
       success: true,
       message: "Customers fetched successfully",
-      data: customers
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        per_page: result.per_page,
+        total_pages: Math.ceil(result.total / result.per_page)
+      }
     });
   } catch (err) {
     next(err);

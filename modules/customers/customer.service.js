@@ -4,13 +4,61 @@ exports.createCustomer = async (data) => {
   return Customer.create(data);
 };
 
-exports.getAllCustomers = async (page = 1, limit = 10) => {
-  const skip = (page - 1) * limit;
+exports.getAllCustomers = async (queryParams) => {
+  const {
+    page = 1,
+    per_page = 10,
+    name,
+    email,
+    contact_number,
+    show_all = false
+  } = queryParams;
 
-  return Customer.find()
-    .sort({ created_at: -1 })
-    .skip(skip)
-    .limit(limit);
+  const filter = {};
+
+  // 🔍 Dynamic Filters
+  if (name) {
+    filter.name = { $regex: name, $options: 'i' }; // case insensitive
+  }
+
+  if (email) {
+    filter.email = { $regex: email, $options: 'i' };
+  }
+
+  if (contact_number) {
+    filter.contact_number = { $regex: contact_number, $options: 'i' };
+  }
+
+  const sort = { created_at: -1 };
+
+  // 🚀 If show_all=true → skip pagination
+  if (show_all === 'true') {
+    const customers = await Customer.find(filter).sort(sort);
+
+    return {
+      data: customers,
+      total: customers.length,
+      page: 1,
+      per_page: customers.length
+    };
+  }
+
+  const skip = (Number(page) - 1) * Number(per_page);
+
+  const [customers, total] = await Promise.all([
+    Customer.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(per_page)),
+    Customer.countDocuments(filter)
+  ]);
+
+  return {
+    data: customers,
+    total,
+    page: Number(page),
+    per_page: Number(per_page)
+  };
 };
 
 exports.getCustomerById = async (id) => {
