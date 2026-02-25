@@ -2,6 +2,9 @@ require('dotenv').config();
 
 const app = require('./app');
 const connectDB = require('./config/mongodb');
+const { startSlotCron } = require("./jobs/slotCron.job");
+
+startSlotCron();
 
 const PORT = process.env.PORT || 5000;
 

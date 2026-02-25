@@ -51,7 +51,8 @@ const serviceVanSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive', 'under_maintenance'],
       default: 'active'
-    }
+    },
+   
   },
   {
     timestamps: {
