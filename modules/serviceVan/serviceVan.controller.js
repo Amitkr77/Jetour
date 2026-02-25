@@ -5,6 +5,7 @@ const ServiceVan = require("./serviceVan.model");
 const Driver = require("../driver/driver.model");
 const createUploader = require('../../utils/uploadImage');
 const parser = createUploader('serviceVan');
+const multer = require('multer');
 
 exports.createServiceVan = [
   parser.single('image'),
