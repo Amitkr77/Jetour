@@ -1,19 +1,12 @@
+// controllers/booking.controller.js
+
+const mongoose = require("mongoose");
 const Booking = require("../booking/booking.model");
-const Package = require("../package/package.model");
-const Settings = require("../../model/settings.model");
-const Counter = require("../../model/counter.model");
+const ServicePackage = require("../package/package.model");
+const VanSlot = require("../vanSlot/vanSlot.model");
+const ServiceVan = require("../serviceVan/serviceVan.model");
+const ScheduleConfig = require("../schedule/schedule.model");
 const Notification = require("../../model/notification.model");
-
-// Helper to generate booking ID
-async function generateBookingId() {
-  const counter = await Counter.findByIdAndUpdate(
-    { _id: "booking" },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-
-  return `BOOK-${counter.seq.toString().padStart(3, "0")}`;
-}
 
 exports.createCustomerBooking = async (req, res) => {
   try {
@@ -28,320 +21,212 @@ exports.createCustomerBooking = async (req, res) => {
       additional_notes
     } = req.body;
 
-    // 1️⃣ Fetch Package
-    const pkg = await Package.findById(package_id);
-    if (!pkg) {
-      return res.status(404).json({
-        success: false,
-        message: "Package not found"
-      });
+    // 1. Validate package
+    const servicePackage = await ServicePackage.findById(package_id);
+    if (!servicePackage) {
+      return res.status(400).json({ message: "Invalid package" });
     }
 
-    // 2️⃣ Strict Pricing Match
-    const mileageRow = pkg.pricing.find(
-      p => p.mileage === vehicle.mileage
-    );
+    // 2. Calculate amount (use your existing logic)
+    const amount = servicePackage.price;
 
-    if (!mileageRow) {
-      return res.status(400).json({
-        success: false,
-        message: "No pricing for this mileage"
-      });
-    }
-
-    const vehiclePrice = mileageRow.vehicles.find(
-      v => v.vehicle_model.toString() === vehicle.vehicle_model
-    );
-
-    if (!vehiclePrice) {
-      return res.status(400).json({
-        success: false,
-        message: "No pricing for this vehicle model at selected mileage"
-      });
-    }
-
-    const basePrice = vehiclePrice.price;
-
-    // 3️⃣ Fetch Settings
-    const settings = await Settings.getSettings();
-    const serviceFee = settings.service_fee;
-
-    const totalAmount = basePrice + serviceFee;
-
-    // 4️⃣ Create Start & End Time
-    const startDateTime = new Date(`${booking_date}T${booking_time}`);
-    const endDateTime = new Date(
-      startDateTime.getTime() + pkg.worktime * 60 * 1000
-    );
-
-    // 5️⃣ Generate Booking ID
-    const bookingId = await generateBookingId();
-
-    // 6️⃣ Create Booking
+    // 3. Create booking as PENDING
     const booking = await Booking.create({
-      booking_id: bookingId,
-      created_by: "customer",
-
       customer,
       address,
-
-      vehicle: {
-        ...vehicle
+      vehicle,
+      package: package_id,
+      schedule: {
+        date: booking_date,
+        start_time: booking_time,
+        slot_ids: []
       },
-
-      package: {
-        package_id: pkg._id,
-        name: pkg.name,
-        worktime: pkg.worktime,
-        base_price: basePrice,
-        service_fee: serviceFee,
-        total_amount: totalAmount
-      },
-
-      start_time: startDateTime,
-      end_time: endDateTime,
-
       payment: {
         method: payment_method,
-        status: "paid",
-        transaction_id: "SIMULATED_TXN_ID"
+        status: "pending",
+        amount
       },
-
-      status: "paid",
+      status: "pending",
       additional_notes
     });
 
     res.status(201).json({
-      success: true,
-      data: booking
+      message: "Booking created. Awaiting payment confirmation.",
+      booking
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
-exports.assignDriver = async (req, res) => {
-  try {
-    const { booking_id } = req.params;
-    const { driver_id, technician_id, service_van_id } = req.body;
 
-    // 1️⃣ Fetch booking
-    const booking = await Booking.findOne({ booking_id });
+exports.confirmBookingPayment = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { booking_id } = req.body;
+
+    const booking = await Booking.findById(booking_id)
+      .populate("package")
+      .session(session);
 
     if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
+      throw new Error("Booking not found");
     }
 
-    if (booking.status !== "paid") {
-      return res.status(400).json({
-        success: false,
-        message: "Only paid bookings can be assigned"
-      });
+    if (booking.payment.status === "paid") {
+      throw new Error("Booking already confirmed");
     }
 
-    // 2️⃣ Fetch settings
-    const settings = await Settings.getSettings();
-    const bufferMinutes = settings.booking_buffer_minutes;
-    const bufferMs = bufferMinutes * 60 * 1000;
+    const config = await ScheduleConfig.findOne({}).session(session);
 
-    // 3️⃣ Calculate buffered window
-    const bufferedStart = new Date(booking.start_time.getTime() - bufferMs);
-    const bufferedEnd = new Date(booking.end_time.getTime() + bufferMs);
+    const slotInterval = config.slot_interval; // 30 mins
+    const buffer = config.buffer_minutes;
 
-    // 4️⃣ Check conflict
-    const driverConflict = await Booking.findOne({
-      "assignment.driver": driver_id,
-      status: { $in: ["confirmed", "in-progress"] },
-      start_time: { $lt: bufferedEnd },
-      end_time: { $gt: bufferedStart }
+    const worktime = booking.package.worktime;
+
+    const totalBlock = worktime + buffer;
+    const requiredSlots = Math.ceil(totalBlock / slotInterval);
+
+    // 1. Find all available slots for that date & start time
+    const allSlots = await VanSlot.find({
+      date: booking.schedule.date,
+      is_booked: false
+    }).sort({ van: 1, start_time: 1 }).session(session);
+
+    // 2. Group by van
+    const grouped = {};
+    allSlots.forEach(slot => {
+      if (!grouped[slot.van]) grouped[slot.van] = [];
+      grouped[slot.van].push(slot);
     });
 
-    if (driverConflict) {
-      return res.status(400).json({
-        success: false,
-        message: "Driver not available within buffer time window"
-      });
-    }
+    let selectedVan = null;
+    let selectedSlots = [];
 
-    // 5️⃣ Technician conflict (if provided)
-    if (technician_id) {
-      const technicianConflict = await Booking.findOne({
-        "assignment.technician": technician_id,
-        status: { $in: ["confirmed", "in-progress"] },
-        start_time: { $lt: bufferedEnd },
-        end_time: { $gt: bufferedStart }
-      });
+    // 3. Find consecutive slots
+    for (let vanId in grouped) {
+      const slots = grouped[vanId];
 
-      if (technicianConflict) {
-        return res.status(400).json({
-          success: false,
-          message: "Technician not available within buffer time window"
-        });
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].start_time !== booking.schedule.start_time) continue;
+
+        const consecutive = [slots[i]];
+
+        for (let j = 1; j < requiredSlots; j++) {
+          if (!slots[i + j]) break;
+          consecutive.push(slots[i + j]);
+        }
+
+        if (consecutive.length === requiredSlots) {
+          selectedVan = vanId;
+          selectedSlots = consecutive;
+          break;
+        }
       }
+
+      if (selectedVan) break;
     }
 
-    // 6️⃣ Service Van conflict (if provided)
-    if (service_van_id) {
-      const vanConflict = await Booking.findOne({
-        "assignment.service_van": service_van_id,
-        status: { $in: ["confirmed", "in-progress"] },
-        start_time: { $lt: bufferedEnd },
-        end_time: { $gt: bufferedStart }
+    if (!selectedVan) {
+      booking.status = "pending_manual_assignment";
+      booking.payment.status = "paid";
+      await booking.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({
+        message: "Payment received but no slots available. Admin intervention required."
       });
-
-      if (vanConflict) {
-        return res.status(400).json({
-          success: false,
-          message: "Service van not available within buffer time window"
-        });
-      }
     }
 
-    // 5️⃣ Assign
-    booking.assignment.driver = driver_id;
-    booking.assignment.technician = technician_id || null;
-    booking.assignment.service_van = service_van_id || null;
-    booking.assignment.assigned_at = new Date();
+    // 4. Lock slots
+    const slotIds = selectedSlots.map(s => s._id);
 
+    await VanSlot.updateMany(
+      { _id: { $in: slotIds }, is_booked: false },
+      { is_booked: true, booking: booking._id },
+      { session }
+    );
+
+    const van = await ServiceVan.findById(selectedVan).session(session);
+
+    const needsAttention = !van.driver || !van.technician;
+
+    // 5. Update booking
+    booking.schedule.slot_ids = slotIds;
+    booking.schedule.end_time =
+      selectedSlots[selectedSlots.length - 1].end_time;
+
+    booking.assignment = {
+      service_van: van._id,
+      driver: van.driver || null,
+      technician: van.technician || null,
+      needs_attention: needsAttention
+    };
+
+    booking.payment.status = "paid";
     booking.status = "confirmed";
 
-    await booking.save();
+    await booking.save({ session });
 
-    await Notification.create({
-      user_id: driver_id,
-      role: "driver",
-      title: "New Booking Assigned",
-      message: `Booking ${booking.booking_id} scheduled at ${booking.start_time}`,
-      booking_id: booking.booking_id
-    });
-
-    if (technician_id) {
-      await Notification.create({
-        user_id: technician_id,
-        role: "technician",
-        title: "New Booking Assigned",
-        message: `Booking ${booking.booking_id} scheduled at ${booking.start_time}`,
-        booking_id: booking.booking_id
-      });
+    // 6. Notify admin if needed
+    if (needsAttention) {
+      await Notification.create([{
+        title: "Booking needs driver/technician assignment",
+        booking: booking._id,
+        role: "admin"
+      }], { session });
     }
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.json({
-      success: true,
-      message: "Driver assigned successfully",
-      data: booking
+      message: "Booking confirmed successfully",
+      booking
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
-exports.getAvailableDrivers = async (req, res) => {
-  try {
-    const { booking_id } = req.params;
-
-    const booking = await Booking.findOne({ booking_id });
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
-    }
-
-    const settings = await Settings.getSettings();
-    const bufferMs = settings.booking_buffer_minutes * 60 * 1000;
-
-    const bufferedStart = new Date(booking.start_time.getTime() - bufferMs);
-    const bufferedEnd = new Date(booking.end_time.getTime() + bufferMs);
-
-    const conflictingBookings = await Booking.find({
-      status: { $in: ["confirmed", "in-progress"] },
-      start_time: { $lt: bufferedEnd },
-      end_time: { $gt: bufferedStart }
-    }).select("assignment.driver");
-
-    const busyDriverIds = conflictingBookings
-      .map(b => b.assignment.driver)
-      .filter(Boolean);
-
-    const Driver = require("../models/driver.model");
-
-    const availableDrivers = await Driver.find({
-      _id: { $nin: busyDriverIds }
-    });
-
-    res.json({ success: true, data: availableDrivers });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.getBookings = async (req, res) => {
-  try {
-    const { status, date } = req.query;
-
-    let filter = {};
-
-    if (status) filter.status = status;
-
-    if (date) {
-      const start = new Date(date);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-
-      filter.start_time = { $gte: start, $lte: end };
-    }
-
-    const bookings = await Booking.find(filter)
-      .populate("assignment.driver")
-      .populate("assignment.technician")
-      .populate("assignment.service_van")
-      .sort({ start_time: 1 });
-
-    res.json({ success: true, data: bookings });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.cancelBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const { booking_id } = req.params;
+    const { booking_id } = req.body;
 
-    const booking = await Booking.findOne({ booking_id });
+    const booking = await Booking.findById(booking_id).session(session);
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
+    if (!booking) throw new Error("Booking not found");
 
-    if (booking.status === "completed") {
-      return res.status(400).json({
-        success: false,
-        message: "Completed booking cannot be cancelled"
-      });
+    if (booking.schedule.slot_ids.length > 0) {
+      await VanSlot.updateMany(
+        { _id: { $in: booking.schedule.slot_ids } },
+        { is_booked: false, booking: null },
+        { session }
+      );
     }
 
     booking.status = "cancelled";
-    await booking.save();
+    await booking.save({ session });
 
-    res.json({
-      success: true,
-      message: "Booking cancelled successfully"
-    });
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ message: "Booking cancelled and slots released" });
 
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({ message: error.message });
   }
 };

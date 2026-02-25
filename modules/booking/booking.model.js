@@ -42,8 +42,7 @@ const bookingSchema = new mongoose.Schema(
     // ---------------- VEHICLE SNAPSHOT ----------------
     vehicle: {
       vehicle_model: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "VehicleModel",
+        type: String,
         required: true
       },
       registration_number: { type: String, required: true },
@@ -66,6 +65,16 @@ const bookingSchema = new mongoose.Schema(
     },
 
     // ---------------- SCHEDULE ----------------
+    schedule: {
+      date: String,
+      start_time: String,
+      end_time: String,
+      slot_ids: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "VanSlot"
+      }]
+    },
+
     start_time: {
       type: Date,
       required: true
@@ -93,7 +102,11 @@ const bookingSchema = new mongoose.Schema(
         ref: "ServiceVan",
         default: null
       },
-      assigned_at: Date
+      assigned_at: Date,
+      needs_attention: {
+        type: Boolean,
+        default: false
+      }
     },
 
     // ---------------- PAYMENT ----------------
