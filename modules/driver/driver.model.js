@@ -1,7 +1,5 @@
 const mongoose = require('mongoose');
 const Counter = require('../../model/counter.model')
-const bcrypt = require('bcrypt');
-
 
 const driverSchema = new mongoose.Schema(
   {
@@ -53,7 +51,6 @@ const driverSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      select: false
     },
 
     country_code: {
@@ -104,13 +101,5 @@ driverSchema.pre('save', async function () {
   }
 });
 
-driverSchema.pre('save', async function () {
-
-  if (this.isModified('password')) {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
-
-});
 
 module.exports = mongoose.model('Driver', driverSchema);
