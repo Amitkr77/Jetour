@@ -3,10 +3,13 @@ const Counter = require("../../model/counter.model");
 
 // 🔥 New vehicle price schema
 const vehiclePriceSchema = new mongoose.Schema({
-  vehicle_model: {
+  vehicle_Id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "VehicleModel",
     required: true
+  },
+  vehicle_model:{
+    type: String,
   },
   price: {
     type: Number,
@@ -76,7 +79,7 @@ const packageSchema = new mongoose.Schema(
 // 🔥 Updated compound index
 packageSchema.index({
   "pricing.mileage": 1,
-  "pricing.vehicles.vehicle_model": 1
+  "pricing.vehicles.vehicle_Id": 1
 });
 
 

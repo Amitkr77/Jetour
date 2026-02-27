@@ -6,6 +6,7 @@ const Driver = require("../driver/driver.model");
 const createUploader = require('../../utils/uploadImage');
 const parser = createUploader('serviceVan');
 const multer = require('multer');
+const Technician = require("../technician/technician.model");
 
 exports.createServiceVan = [
   parser.single('image'),
@@ -21,25 +22,73 @@ exports.createServiceVan = [
         });
       }
 
+      const { driver_id, technician_id } = req.body;
+
+      // 🔍 Find driver
+      const driver = await Driver.findOne({ driver_id });
+      if (!driver) {
+        return res.status(404).json({
+          success: false,
+          message: "Driver not found",
+          data: null
+        });
+      }
+
+      if (driver.assigned_van) {
+        return res.status(400).json({
+          success: false,
+          message: "Driver already assigned to another van"
+        });
+      }
+
+      // 🔍 Find technician
+      const technician = await Technician.findOne({ technician_id });
+      if (!technician) {
+        return res.status(404).json({
+          success: false,
+          message: "Technician not found",
+          data: null
+        });
+      }
+
+      if (technician.assigned_van) {
+        return res.status(400).json({
+          success: false,
+          message: "Technician already assigned to another van"
+        });
+      }
+
       const image = req.file ? req.file.path : req.body.image;
 
+      // ✅ Create van
       const van = await serviceVanService.createServiceVan({
         ...req.body,
+        driver: driver._id,
+        technician: technician._id,
         image
       });
+
+      // ✅ Update driver & technician after van created
+      driver.assigned_van = van._id;
+      technician.assigned_van = van._id;
+
+      await driver.save();
+      await technician.save();
 
       return res.status(201).json({
         success: true,
         message: 'Service van created successfully',
         data: van
       });
+
     } catch (err) {
       if (err instanceof multer.MulterError) {
         return res.status(400).json({ success: false, message: err.message });
       }
       next(err);
     }
-  }]
+  }
+];
 
 exports.getAllServiceVans = async (req, res, next) => {
   try {
@@ -168,6 +217,13 @@ exports.assignDriver = async (req, res) => {
     const { vanId } = req.params;
     const { driver_id } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(vanId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid van ID"
+      });
+    }
+
     const van = await ServiceVan.findById(vanId);
     if (!van) {
       return res.status(404).json({
@@ -176,7 +232,7 @@ exports.assignDriver = async (req, res) => {
       });
     }
 
-    const driver = await Driver.findById(driver_id);
+    const driver = await Driver.findOne({ driver_id });
     if (!driver) {
       return res.status(404).json({
         success: false,
@@ -191,7 +247,14 @@ exports.assignDriver = async (req, res) => {
       });
     }
 
-    // 🔥 Remove driver from previous van
+    if (van.driver && van.driver.equals(driver._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Driver already assigned to this van"
+      });
+    }
+
+    // Remove driver from previous van
     if (driver.assigned_van) {
       await ServiceVan.findByIdAndUpdate(
         driver.assigned_van,
@@ -199,15 +262,14 @@ exports.assignDriver = async (req, res) => {
       );
     }
 
-    // 🔥 Remove old driver from this van
+    // Remove old driver from this van
     if (van.driver) {
       await Driver.findByIdAndUpdate(
         van.driver,
-        { assigned_van: null }
+        { assigned_van: null, availability: "available" }
       );
     }
 
-    // ✅ Assign new driver
     van.driver = driver._id;
     await van.save();
 
@@ -223,6 +285,93 @@ exports.assignDriver = async (req, res) => {
 
   } catch (error) {
     res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.assignTechnician = async (req, res) => {
+  try {
+    const { vanId } = req.params;
+    const { technician_id } = req.body;
+
+    // ✅ Validate vanId
+    if (!mongoose.Types.ObjectId.isValid(vanId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid van ID"
+      });
+    }
+
+    const van = await ServiceVan.findById(vanId);
+    if (!van) {
+      return res.status(404).json({
+        success: false,
+        message: "Service van not found"
+      });
+    }
+
+    // ✅ Find technician using custom technician_id
+    const technician = await Technician.findOne({ technician_id });
+    if (!technician) {
+      return res.status(404).json({
+        success: false,
+        message: "Technician not found"
+      });
+    }
+
+    // ✅ Check technician status
+    if (technician.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Technician is not active"
+      });
+    }
+
+    // ✅ Prevent reassigning same technician
+    if (van.technician && van.technician.equals(technician._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Technician already assigned to this van"
+      });
+    }
+
+    // 🔥 Remove technician from previous van
+    if (technician.assigned_van) {
+      await ServiceVan.findByIdAndUpdate(
+        technician.assigned_van,
+        { technician: null }
+      );
+    }
+
+    // 🔥 Remove old technician from this van
+    if (van.technician) {
+      await Technician.findByIdAndUpdate(
+        van.technician,
+        {
+          assigned_van: null,
+          availability: "available"
+        }
+      );
+    }
+
+    // ✅ Assign new technician
+    van.technician = technician._id;
+    await van.save();
+
+    technician.assigned_van = van._id;
+    technician.availability = "available";
+    await technician.save();
+
+    return res.json({
+      success: true,
+      message: "Technician assigned successfully",
+      data: van
+    });
+
+  } catch (error) {
+    return res.status(400).json({
       success: false,
       message: error.message
     });

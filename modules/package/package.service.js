@@ -1,28 +1,38 @@
 const Package = require("./package.model");
+const VehicleModel = require("../vehicle/vehicle.model");
 
 exports.createPackage = async (payload) => {
 
   const mileageSet = new Set();
 
-  payload.pricing.forEach(row => {
+  for (const row of payload.pricing) {
 
-    // 🔥 Prevent duplicate mileage rows
     if (mileageSet.has(row.mileage)) {
       throw new Error("Duplicate mileage entry");
     }
     mileageSet.add(row.mileage);
 
-    // 🔥 Prevent duplicate vehicle_model inside same mileage
     const vehicleSet = new Set();
 
-    row.vehicles.forEach(v => {
-      if (vehicleSet.has(v.vehicle_model)) {
-        throw new Error("Duplicate vehicle_model in same mileage row");
-      }
-      vehicleSet.add(v.vehicle_model);
-    });
+    for (const v of row.vehicles) {
 
-  });
+      // 🔥 prevent duplicate vehicle in same mileage
+      if (vehicleSet.has(v.vehicle_Id.toString())) {
+        throw new Error("Duplicate vehicle in same mileage row");
+      }
+      vehicleSet.add(v.vehicle_Id.toString());
+
+      // 🔥 fetch vehicle model name
+      const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+
+      if (!vehicleDoc) {
+        throw new Error("Vehicle not found");
+      }
+
+      // 🔥 attach vehicle_model automatically
+      v.vehicle_model = vehicleDoc.vehicle_model;
+    }
+  }
 
   return await Package.create(payload);
 };
@@ -45,15 +55,27 @@ exports.updatePackage = async (id, payload) => {
 
   if (payload.pricing) {
 
-    const seen = new Set();
+    for (const row of payload.pricing) {
 
-    payload.pricing.forEach(p => {
-      const key = `${p.vehicle_model}_${p.mileage}`;
-      if (seen.has(key)) {
-        throw new Error("Duplicate vehicle_model and mileage combination");
+      const vehicleSet = new Set();
+
+      for (const v of row.vehicles) {
+
+        if (vehicleSet.has(v.vehicle_Id.toString())) {
+          throw new Error("Duplicate vehicle in same mileage row");
+        }
+
+        vehicleSet.add(v.vehicle_Id.toString());
+
+        const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+
+        if (!vehicleDoc) {
+          throw new Error("Vehicle not found");
+        }
+
+        v.vehicle_model = vehicleDoc.name;
       }
-      seen.add(key);
-    });
+    }
   }
 
   const updated = await Package.findByIdAndUpdate(
@@ -75,4 +97,34 @@ exports.changeStatus = async (id, status) => {
     { status },
     { new: true }
   );
+};
+
+
+exports.calculatePackagePrice = (servicePackage, vehicle) => {
+  const { mileage, vehicle_id } = vehicle;
+
+
+
+  const sortedPricing = servicePackage.pricing.sort(
+    (a, b) => a.mileage - b.mileage
+  );
+
+  const mileageTier = sortedPricing.find(
+    tier => mileage <= tier.mileage
+  );
+
+
+  if (!mileageTier) {
+    throw new Error("No pricing tier available for this mileage");
+  }
+
+  const vehiclePricing = mileageTier.vehicles.find(
+    v => v.vehicle_Id.toString() === vehicle_id.toString()
+  );
+
+  if (!vehiclePricing) {
+    throw new Error("Vehicle not supported in this mileage tier");
+  }
+
+  return vehiclePricing.price;
 };

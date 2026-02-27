@@ -53,3 +53,23 @@ exports.updateBookingBuffer = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ✅ Get Service Fee Only
+exports.getServiceFee = async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+
+    res.json({
+      success: true,
+      data: {
+        service_fee: settings.service_fee,
+        currency: settings.currency
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

@@ -1,7 +1,7 @@
 const dayjs = require("dayjs");
 const ScheduleConfig = require("../schedule/schedule.model");
 const Van = require("../serviceVan/serviceVan.model");
-const VanSlot = require("../vanSlot/vanSlot.model");
+const VanSlot = require("./vanSlot.model");
 
 exports.generateSlots = async () => {
   try {

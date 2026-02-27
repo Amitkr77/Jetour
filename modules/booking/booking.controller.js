@@ -7,6 +7,9 @@ const VanSlot = require("../vanSlot/vanSlot.model");
 const ServiceVan = require("../serviceVan/serviceVan.model");
 const ScheduleConfig = require("../schedule/schedule.model");
 const Notification = require("../../model/notification.model");
+const Settings = require("../../model/settings.model");
+const { calculatePackagePrice } = require("../package/package.service");
+const VehicleModel = require("../vehicle/vehicle.model");
 
 exports.createCustomerBooking = async (req, res) => {
   try {
@@ -14,29 +17,63 @@ exports.createCustomerBooking = async (req, res) => {
       customer,
       address,
       vehicle,
-      package_id,
+      packageId,
       booking_date,
       booking_time,
       payment_method,
       additional_notes
     } = req.body;
 
-    // 1. Validate package
-    const servicePackage = await ServicePackage.findById(package_id);
+
+    if (!mongoose.Types.ObjectId.isValid(packageId)) {
+      return res.status(400).json({ message: `Invalid package ID format: ${packageId}` });
+    }
+
+    const servicePackage = await ServicePackage.findById(packageId);
+
     if (!servicePackage) {
       return res.status(400).json({ message: "Invalid package" });
     }
 
     // 2. Calculate amount (use your existing logic)
-    const amount = servicePackage.price;
+    // const amount = servicePackage.price;
+    if (!mongoose.Types.ObjectId.isValid(vehicle.vehicle_id)) {
+      return res.status(400).json({ message: "Invalid vehicle ID" });
+    }
+    const vehiclPlayload = {
+      vehicle_id: vehicle.vehicle_id,
+      mileage: vehicle.mileage
+    }
+
+    const base_price = calculatePackagePrice(servicePackage, vehiclPlayload);
+
+    // Get global settings
+    const settings = await Settings.findOne({});
+
+    if (!settings) {
+      return res.status(500).json({ message: "Settings not configured" });
+    }
+
+    const service_fee = settings.service_fee || 0;
+
+    const total_amount = base_price + service_fee;
 
     // 3. Create booking as PENDING
     const booking = await Booking.create({
+
+      created_by: "customer",
+
       customer,
       address,
       vehicle,
-      package: package_id,
-      schedule: {
+      package: {
+        package_id: servicePackage._id,
+        name: servicePackage.name,
+        worktime: servicePackage.worktime,
+        base_price,
+        service_fee,
+        total_amount
+      }, schedule: {
         date: booking_date,
         start_time: booking_time,
         slot_ids: []
@@ -44,7 +81,6 @@ exports.createCustomerBooking = async (req, res) => {
       payment: {
         method: payment_method,
         status: "pending",
-        amount
       },
       status: "pending",
       additional_notes
@@ -82,8 +118,9 @@ exports.confirmBookingPayment = async (req, res) => {
 
     const config = await ScheduleConfig.findOne({}).session(session);
 
-    const slotInterval = config.slot_interval; // 30 mins
-    const buffer = config.buffer_minutes;
+    
+    const slotInterval = config.slot_interval_minutes;
+    const buffer = config.buffer_between_bookings_minutes;
 
     const worktime = booking.package.worktime;
 
@@ -93,14 +130,22 @@ exports.confirmBookingPayment = async (req, res) => {
     // 1. Find all available slots for that date & start time
     const allSlots = await VanSlot.find({
       date: booking.schedule.date,
-      is_booked: false
+      status: "available",
+
     }).sort({ van: 1, start_time: 1 }).session(session);
+
 
     // 2. Group by van
     const grouped = {};
+
     allSlots.forEach(slot => {
-      if (!grouped[slot.van]) grouped[slot.van] = [];
-      grouped[slot.van].push(slot);
+      const vanKey = slot.van_id.toString();
+
+      if (!grouped[vanKey]) {
+        grouped[vanKey] = [];
+      }
+
+      grouped[vanKey].push(slot);
     });
 
     let selectedVan = null;
@@ -110,24 +155,37 @@ exports.confirmBookingPayment = async (req, res) => {
     for (let vanId in grouped) {
       const slots = grouped[vanId];
 
-      for (let i = 0; i < slots.length; i++) {
-        if (slots[i].start_time !== booking.schedule.start_time) continue;
+      // Create a map for quick lookup
+      const slotMap = {};
+      slots.forEach(slot => {
+        slotMap[slot.start_time] = slot;
+      });
 
-        const consecutive = [slots[i]];
+      // Generate required time sequence
+      let currentTime = booking.schedule.start_time;
+      const consecutive = [];
 
-        for (let j = 1; j < requiredSlots; j++) {
-          if (!slots[i + j]) break;
-          consecutive.push(slots[i + j]);
-        }
-
-        if (consecutive.length === requiredSlots) {
-          selectedVan = vanId;
-          selectedSlots = consecutive;
+      for (let k = 0; k < requiredSlots; k++) {
+        if (!slotMap[currentTime]) {
           break;
         }
+
+        consecutive.push(slotMap[currentTime]);
+
+        // Move to next interval
+        const [hour, minute] = currentTime.split(":").map(Number);
+        const next = new Date(0, 0, 0, hour, minute + slotInterval);
+        currentTime =
+          next.getHours().toString().padStart(2, "0") +
+          ":" +
+          next.getMinutes().toString().padStart(2, "0");
       }
 
-      if (selectedVan) break;
+      if (consecutive.length === requiredSlots) {
+        selectedVan = vanId;
+        selectedSlots = consecutive;
+        break;
+      }
     }
 
     if (!selectedVan) {
@@ -147,8 +205,11 @@ exports.confirmBookingPayment = async (req, res) => {
     const slotIds = selectedSlots.map(s => s._id);
 
     await VanSlot.updateMany(
-      { _id: { $in: slotIds }, is_booked: false },
-      { is_booked: true, booking: booking._id },
+      { _id: { $in: slotIds }, status: "available" },
+      {
+        status: "booked",
+        booking_id: booking._id
+      },
       { session }
     );
 

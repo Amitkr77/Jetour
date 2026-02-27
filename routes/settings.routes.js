@@ -8,6 +8,8 @@ router.get("/", settingsController.getSettings);
 
 router.put("/service-fee", settingsController.updateServiceFee);
 
+router.get("/service-fee", settingsController.getServiceFee);
+
 router.put("/booking-buffer", settingsController.updateBookingBuffer);
 
 module.exports = router;

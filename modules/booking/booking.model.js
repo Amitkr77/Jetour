@@ -1,3 +1,4 @@
+const { string } = require("joi");
 const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema(
@@ -17,7 +18,7 @@ const bookingSchema = new mongoose.Schema(
     customer: {
       name: { type: String, required: true },
       email: { type: String },
-      gender: { type: String, enum: ["Male", "Female"] },
+      gender: { type: String, enum: ["male", "female"] },
       phone: { type: String, required: true },
       paci_number: { type: String }
     },
@@ -45,6 +46,11 @@ const bookingSchema = new mongoose.Schema(
         type: String,
         required: true
       },
+      vehicle_id :{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Vehicle",
+        required: true
+      },
       registration_number: { type: String, required: true },
       model_year: { type: Number, required: true },
       mileage: { type: Number, required: true }
@@ -55,7 +61,7 @@ const bookingSchema = new mongoose.Schema(
       package_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Package",
-        required: true
+        // required: true
       },
       name: String,
       worktime: Number,
@@ -77,12 +83,12 @@ const bookingSchema = new mongoose.Schema(
 
     start_time: {
       type: Date,
-      required: true
+      // required: true
     },
 
     end_time: {
       type: Date,
-      required: true
+      // required: true
     },
 
     // ---------------- ASSIGNMENT ----------------
@@ -133,7 +139,8 @@ const bookingSchema = new mongoose.Schema(
         "confirmed",
         "in-progress",
         "completed",
-        "cancelled"
+        "cancelled",
+        "pending_manual_assignment"
       ],
       default: "pending"
     },

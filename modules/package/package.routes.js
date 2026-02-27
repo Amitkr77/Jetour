@@ -17,4 +17,6 @@ router.patch(
     controller.changeStatus
 );
 
+router.post("/calculate-price", controller.calculatePrice);
+
 module.exports = router;
