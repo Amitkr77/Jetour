@@ -17,6 +17,7 @@ const packagesRoutes = require("./modules/package/package.routes")
 const inventoryRoutes = require('./modules/inventory/inventory.routes')
 const slotRoutes = require("./modules/vanSlot/slot.routes");
 const scheduleRoutes = require('./modules/schedule/schedule.routes')
+const userVehicleRoutes = require('./modules/customers/vehicle/customerVehicle.routes')
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/schedule", scheduleRoutes);
 app.use("/api/v1/slots", slotRoutes);
+app.use("/api/v1/user/vehicle", userVehicleRoutes);
 
 
 app.get('/', (req, res) => {

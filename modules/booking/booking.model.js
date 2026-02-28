@@ -16,11 +16,15 @@ const bookingSchema = new mongoose.Schema(
 
     // ---------------- CUSTOMER DETAILS ----------------
     customer: {
+      customer_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer",
+        required: true
+      },
       name: { type: String, required: true },
       email: { type: String },
       gender: { type: String, enum: ["male", "female"] },
       phone: { type: String, required: true },
-      paci_number: { type: String }
     },
 
     // ---------------- ADDRESS ----------------
@@ -32,12 +36,9 @@ const bookingSchema = new mongoose.Schema(
       building_no: String,
       floor_no: String,
       flat_no: String,
-
-      google_location: {
-        lat: Number,
-        lng: Number,
-        formatted_address: String
-      }
+      paci_details: String,
+      lat: Number,
+      lng: Number,
     },
 
     // ---------------- VEHICLE SNAPSHOT ----------------
@@ -46,7 +47,7 @@ const bookingSchema = new mongoose.Schema(
         type: String,
         required: true
       },
-      vehicle_id :{
+      vehicle_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Vehicle",
         required: true

@@ -24,8 +24,6 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
   try {
     const data = await AdminService.loginAdmin(req.body);
-    console.log(data);
-    
 
     res.status(200).json({
       success: true,

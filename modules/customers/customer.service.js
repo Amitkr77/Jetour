@@ -62,7 +62,10 @@ exports.getAllCustomers = async (queryParams) => {
 };
 
 exports.getCustomerById = async (id) => {
-  return Customer.findById(id);
+  return Customer.findById(id).populate({
+    path: "vehicles",
+    populate: { path: "vehicle_model" }
+  });
 };
 
 exports.updateCustomer = async (id, data) => {

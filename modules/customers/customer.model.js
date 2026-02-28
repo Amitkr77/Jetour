@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const Counter = require('../../model/counter.model');
 
 
-
 const addressSchema = new mongoose.Schema({
   governorate: { type: String, trim: true },
   area: { type: String, trim: true },
@@ -100,13 +99,22 @@ const customerSchema = new mongoose.Schema({
     // required: true,
     select: false
   },
-  vehicle: vehicleSchema,
+  // vehicle: vehicleSchema,
 
   full_address: addressSchema
 
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
+
+customerSchema.virtual("vehicles", {
+  ref: "CustomerVehicle",
+  localField: "_id",
+  foreignField: "customer"
+});
+
+customerSchema.set("toObject", { virtuals: true });
+customerSchema.set("toJSON", { virtuals: true });
 
 customerSchema.pre('save', async function () {
   if (!this.isNew) return;

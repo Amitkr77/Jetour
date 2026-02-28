@@ -9,7 +9,7 @@ const ScheduleConfig = require("../schedule/schedule.model");
 const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
 const { calculatePackagePrice } = require("../package/package.service");
-const VehicleModel = require("../vehicle/vehicle.model");
+const { not } = require("joi");
 
 exports.createCustomerBooking = async (req, res) => {
   try {
@@ -95,7 +95,6 @@ exports.createCustomerBooking = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 exports.confirmBookingPayment = async (req, res) => {
   const session = await mongoose.startSession();
@@ -242,6 +241,12 @@ exports.confirmBookingPayment = async (req, res) => {
         role: "admin"
       }], { session });
     }
+    // await Notification.create([{
+    //   title: "Your booking is confirmed",
+    //   booking: booking._id,
+    //   user: booking.customer,
+    //   role: "customer"
+    // }], { session });
 
     await session.commitTransaction();
     session.endSession();
@@ -255,6 +260,40 @@ exports.confirmBookingPayment = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getBookingsByCustomerId = async (req, res) => {
+  try {
+    const { customer_id } = req.params;
+
+    // 🔎 Validate customer_id
+    if (!mongoose.Types.ObjectId.isValid(customer_id)) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid customer_id"
+      });
+    }
+
+    // 🔥 Fetch bookings
+    const bookings = await Booking.find({
+      "customer.customer_id": customer_id
+    })
+      .sort({ createdAt: -1 }); // Latest first
+
+    return res.status(200).json({
+      status: true,
+      message: "Bookings fetched successfully",
+      total: bookings.length,
+      data: bookings
+    });
+
+  } catch (error) {
+    console.error("Fetch Booking Error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Something went wrong"
+    });
   }
 };
 
@@ -289,5 +328,163 @@ exports.cancelBooking = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getBookingDashboard = async (req, res) => {
+  try {
+    // ===============================
+    // TIMEZONE SAFE DATE (CHANGE IF NEEDED)
+    // ===============================
+    const timezone = "Asia/Kolkata"; // change if business timezone different
+    const now = new Date(
+      new Date().toLocaleString("en-US", { timeZone: timezone })
+    );
+
+    // ===============================
+    // TODAY RANGE
+    // ===============================
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const todayFilter = {
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    };
+
+    // ===============================
+    // TODAY BOOKINGS
+    // ===============================
+    const total_count = await Booking.countDocuments(todayFilter);
+
+    const completed = await Booking.countDocuments({
+      ...todayFilter,
+      status: "completed"
+    });
+
+    const in_progress = await Booking.countDocuments({
+      ...todayFilter,
+      status: "in-progress"
+    });
+
+    // ===============================
+    // REVENUE (ONLY PAID)
+    // ===============================
+    const revenueAgg = await Booking.aggregate([
+      {
+        $match: { "payment.status": "paid" }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$package.total_amount" }
+        }
+      }
+    ]);
+
+    const revenue = revenueAgg.length ? revenueAgg[0].total : 0;
+
+    // ===============================
+    // WEEKLY BOOKING TREND
+    // ===============================
+    const firstDayOfWeek = new Date(now);
+    firstDayOfWeek.setDate(now.getDate() - now.getDay());
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+
+    const lastDayOfWeek = new Date(firstDayOfWeek);
+    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+    lastDayOfWeek.setHours(23, 59, 59, 999);
+
+    const trendAgg = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: firstDayOfWeek,
+            $lte: lastDayOfWeek
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: "$createdAt" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const booking_trend = {
+      sunday: 0,
+      monday: 0,
+      tuesday: 0,
+      wednesday: 0,
+      thursday: 0,
+      friday: 0,
+      saturday: 0
+    };
+
+    const dayMap = {
+      1: "sunday",
+      2: "monday",
+      3: "tuesday",
+      4: "wednesday",
+      5: "thursday",
+      6: "friday",
+      7: "saturday"
+    };
+
+    trendAgg.forEach(item => {
+      booking_trend[dayMap[item._id]] = item.count;
+    });
+
+    // ===============================
+    // SERVICE DISTRIBUTION
+    // ===============================
+    const serviceAgg = await Booking.aggregate([
+      {
+        $group: {
+          _id: "$package.name",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const totalServices = serviceAgg.reduce(
+      (acc, item) => acc + item.count,
+      0
+    );
+
+    const service_distribution = serviceAgg.map(item => ({
+      package_name: item._id,
+      percentage: totalServices
+        ? Math.round((item.count / totalServices) * 100)
+        : 0
+    }));
+
+    // ===============================
+    // FINAL RESPONSE
+    // ===============================
+    res.status(200).json({
+      status: true,
+      message: "Dashboard details retrieved successfully",
+      data: {
+        today_bookings: {
+          total_count,
+          completed,
+          in_progress
+        },
+        revenue,
+        booking_trend,
+        service_distribution
+      }
+    });
+
+  } catch (error) {
+    console.error("Dashboard Error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Something went wrong"
+    });
   }
 };

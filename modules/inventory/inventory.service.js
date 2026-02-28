@@ -29,9 +29,7 @@ exports.getAllInventory = async (query) => {
   };
 };
 
-exports.getAllInventory = async () => {
-  return await Inventory.find().sort({ created_at: -1 });
-};
+
 
 exports.getInventoryById = async (id) => {
   return await Inventory.findById(id);

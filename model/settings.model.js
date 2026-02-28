@@ -8,11 +8,6 @@ const settingsSchema = new mongoose.Schema(
       min: 0
     },
 
-    booking_buffer_minutes: {
-      type: Number,
-      default: 30,
-      min: 0
-    },
 
     currency: {
       type: String,

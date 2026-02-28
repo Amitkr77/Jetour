@@ -62,7 +62,7 @@ exports.getInventoryDetail = async (req, res, next) => {
             });
         }
 
-        const inventory = await inventoryService.getInventoryById(req.params.id);
+        const inventory = await inventoryService.getInventoryById(id);
 
         if (!inventory) {
             return res.status(404).json({
@@ -95,7 +95,7 @@ exports.updateInventory = async (req, res, next) => {
             });
         }
 
-        const { error } = validation.updateInventorySchema.validate(req.body);
+        const { error } = validation.updateInventorySchema.validate(id,req.body);
 
         if (error) {
             return res.status(400).json({
@@ -141,7 +141,7 @@ exports.deleteInventory = async (req, res, next) => {
             });
         }
 
-        const inventory = await inventoryService.deleteInventory(req.params.id);
+        const inventory = await inventoryService.deleteInventory(id);
 
         if (!inventory) {
             return res.status(404).json({
