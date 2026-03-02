@@ -5,6 +5,7 @@ const settingsController = require("../controllers/settings.controller");
 // Admin protected routes (add auth middleware if needed)
 
 router.get("/", settingsController.getSettings);
+router.put("/", settingsController.updateSettings);
 
 router.put("/service-fee", settingsController.updateServiceFee);
 
