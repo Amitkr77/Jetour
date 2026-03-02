@@ -14,7 +14,7 @@ exports.getAllServiceVans = async () => {
 };
 
 exports.getServiceVanById = async (id) => {
-  return ServiceVan.findById(id)
+  const van = await ServiceVan.findById(id)
     .populate({
       path: "driver",
       select: "name driver_id"
@@ -22,7 +22,21 @@ exports.getServiceVanById = async (id) => {
     .populate({
       path: "technician",
       select: "name technician_id"
-    });
+    })
+    .lean(); // converts mongoose doc → plain JS object
+
+  if (!van) return null;
+
+  // Rename fields
+  van.driver_details = van.driver;
+  van.technician_details = van.technician;
+
+  delete van.driver;
+  delete van.technician;
+  delete van.driver_id;
+  delete van.technician_id;
+
+  return van;
 };
 
 exports.updateServiceVan = async (id, data) => {
