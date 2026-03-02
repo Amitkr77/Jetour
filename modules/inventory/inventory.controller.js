@@ -95,7 +95,7 @@ exports.updateInventory = async (req, res, next) => {
             });
         }
 
-        const { error } = validation.updateInventorySchema.validate(id,req.body);
+        const { error } = validation.updateInventorySchema.validate(req.body);
 
         if (error) {
             return res.status(400).json({
@@ -106,7 +106,7 @@ exports.updateInventory = async (req, res, next) => {
         }
 
         const inventory = await inventoryService.updateInventory(
-            req.params.id,
+            id,
             req.body
         );
 
