@@ -21,7 +21,7 @@ exports.createCustomerSchema = Joi.object({
 
   nationality: Joi.string().trim().allow('', null),
 
-  preferred_language: Joi.string().valid('Arabic', 'English').default('English'),
+  preferred_language: Joi.string().valid('arabic', 'english').default('english'),
 
   date_of_birth: Joi.date().allow(null),
 
@@ -49,7 +49,7 @@ exports.updateCustomerSchema = Joi.object({
   passport_number: Joi.string().trim().allow(''),
   nationality: Joi.string().trim().allow(''),
   status: Joi.string().valid('Active', 'Inactive', 'Blocked'),
-  preferred_language: Joi.string().valid('Arabic', 'English'),
+  preferred_language: Joi.string().valid('arabic', 'english'),
   lat: Joi.number().min(-90).max(90),
   lng: Joi.number().min(-180).max(180),
   date_of_birth: Joi.date().allow(null),

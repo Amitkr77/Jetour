@@ -87,8 +87,8 @@ const customerSchema = new mongoose.Schema({
 
   preferred_language: {
     type: String,
-    enum: ['Arabic', 'English'],
-    default: 'English'
+    enum: ['arabic', 'english'],
+    default: 'english'
   },
 
   date_of_birth: {
