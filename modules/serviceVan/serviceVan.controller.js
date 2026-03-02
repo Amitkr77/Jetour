@@ -59,6 +59,7 @@ exports.createServiceVan = [
       }
 
       const image = req.file ? req.file.path : req.body.image;
+      console.log("FILE:", req.file);
 
       // ✅ Create van
       const van = await serviceVanService.createServiceVan({
@@ -134,53 +135,56 @@ exports.getServiceVanDetail = async (req, res, next) => {
   }
 };
 
-exports.updateServiceVan = async (req, res, next) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid service van ID',
-        data: null
+exports.updateServiceVan = [
+  parser.single('image'),
+  async (req, res, next) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid service van ID',
+          data: null
+        });
+      }
+
+      const { error } = validation.updateServiceVanSchema.validate(req.body);
+
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          data: null
+        });
+      }
+
+      const updateData = {
+        ...req.body,
+        ...(req.file && { image: req.file.path }) // ✅ now this works
+      };
+
+      const van = await serviceVanService.updateServiceVan(
+        req.params.id,
+        updateData
+      );
+
+      if (!van) {
+        return res.status(404).json({
+          success: false,
+          message: 'Service van not found',
+          data: null
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Service van updated successfully',
+        data: van
       });
+    } catch (err) {
+      next(err);
     }
-
-    const { error } = validation.updateServiceVanSchema.validate(req.body);
-
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-        data: null
-      });
-    }
-
-    const updateData = {
-      ...req.body,
-      ...(req.file && { image: req.file.path })
-    };
-
-    const van = await serviceVanService.updateServiceVan(
-      req.params.id,
-      updateData
-    );
-
-    if (!van) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service van not found',
-        data: null
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Service van updated successfully',
-      data: van
-    });
-  } catch (err) {
-    next(err);
   }
-};
+];
 
 exports.deleteServiceVan = async (req, res, next) => {
   try {

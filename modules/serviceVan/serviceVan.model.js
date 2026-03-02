@@ -14,7 +14,7 @@ const serviceVanSchema = new mongoose.Schema(
       type: String
     },
 
-    // 🔹 Technician ID (T-001)
+    // 🔹 Technician ID 
     technician_id: {
       type: String
     },
