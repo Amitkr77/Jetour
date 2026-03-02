@@ -2,35 +2,30 @@ const Package = require("./package.model");
 const VehicleModel = require("../vehicle/vehicle.model");
 
 exports.createPackage = async (payload) => {
+  if (payload.pricing) {
+    const mileageSet = new Set();
 
-  const mileageSet = new Set();
-
-  for (const row of payload.pricing) {
-
-    if (mileageSet.has(row.mileage)) {
-      throw new Error("Duplicate mileage entry");
-    }
-    mileageSet.add(row.mileage);
-
-    const vehicleSet = new Set();
-
-    for (const v of row.vehicles) {
-
-      // 🔥 prevent duplicate vehicle in same mileage
-      if (vehicleSet.has(v.vehicle_Id.toString())) {
-        throw new Error("Duplicate vehicle in same mileage row");
+    for (const row of payload.pricing) {
+      if (mileageSet.has(row.mileage)) {
+        throw new Error("Duplicate mileage entry");
       }
-      vehicleSet.add(v.vehicle_Id.toString());
+      mileageSet.add(row.mileage);
 
-      // 🔥 fetch vehicle model name
-      const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+      const vehicleSet = new Set();
 
-      if (!vehicleDoc) {
-        throw new Error("Vehicle not found");
+      for (const v of row.vehicles) {
+        if (vehicleSet.has(v.vehicle_Id?.toString() || v.vehicle_model)) {
+          throw new Error("Duplicate vehicle in same mileage row");
+        }
+        vehicleSet.add(v.vehicle_Id?.toString() || v.vehicle_model);
+
+        // If vehicle_Id is provided, fetch model name
+        if (v.vehicle_Id) {
+          const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+          if (!vehicleDoc) throw new Error("Vehicle not found");
+          v.vehicle_model = vehicleDoc.vehicle_model;
+        }
       }
-
-      // 🔥 attach vehicle_model automatically
-      v.vehicle_model = vehicleDoc.vehicle_model;
     }
   }
 

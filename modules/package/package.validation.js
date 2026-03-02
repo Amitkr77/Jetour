@@ -6,8 +6,9 @@ exports.createPackage = Joi.object({
   name: Joi.string().required(),
   status: Joi.string().valid("active", "inactive"),
   worktime: Joi.number().required(),
-  details: Joi.array().items(Joi.string()),
+  details: Joi.array().items(Joi.string()).required(),
 
+  // Make pricing optional
   pricing: Joi.array().items(
     Joi.object({
       mileage: Joi.number().required(),
@@ -18,7 +19,7 @@ exports.createPackage = Joi.object({
         })
       ).min(1).required()
     })
-  ).min(1).required()
+  ).optional()
 });
 
 exports.updatePackage = Joi.object({
