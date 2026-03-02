@@ -38,3 +38,19 @@ exports.rejectRequest = async (requestId, reason) => {
   await request.save();
   return request;
 };
+
+// Get all requests (admin)
+exports.getAllRequests = async () => {
+  return InventoryRequest.find()
+    .populate("technician", "technician_id name")
+    .populate("approved_by", "name email")
+    .populate("items.inventory_id", "name quantity")
+    .sort({ created_at: -1 });
+};
+
+// Get technician requests
+exports.getTechnicianRequests = async (technicianId) => {
+  return InventoryRequest.find({ technician: technicianId })
+    .populate("items.inventory_id", "name quantity")
+    .sort({ created_at: -1 });
+};

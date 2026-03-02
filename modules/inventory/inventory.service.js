@@ -1,5 +1,10 @@
 const Inventory = require('./inventory.model');
 
+// ✅ CREATE
+exports.createInventory = async (data) => {
+  return await Inventory.create(data);
+};
+
 exports.getAllInventory = async (query) => {
   const page = parseInt(query.page) || 1;
   const page_size = parseInt(query.page_size) || 10;
@@ -28,8 +33,6 @@ exports.getAllInventory = async (query) => {
     data
   };
 };
-
-
 
 exports.getInventoryById = async (id) => {
   return await Inventory.findById(id);
