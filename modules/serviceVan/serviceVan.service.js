@@ -14,7 +14,15 @@ exports.getAllServiceVans = async () => {
 };
 
 exports.getServiceVanById = async (id) => {
-  return ServiceVan.findById(id);
+  return ServiceVan.findById(id)
+    .populate({
+      path: "driver",
+      select: "name driver_id"
+    })
+    .populate({
+      path: "technician",
+      select: "name technician_id"
+    });
 };
 
 exports.updateServiceVan = async (id, data) => {

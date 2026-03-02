@@ -1,0 +1,24 @@
+const express = require("express");
+const router = express.Router();
+const technicianController = require("../controllers/technician.controller");
+const authMiddleware = require("../middlewares/auth");
+const roleMiddleware = require("../middlewares/role");
+
+// All technician routes require auth + technician role
+router.use(authMiddleware);
+router.use(roleMiddleware("technician"));
+
+router.get("/dashboard", technicianController.getDashboard);
+router.get("/active-job", technicianController.getActiveJob);
+router.get("/upcoming", technicianController.getUpcomingJobs);
+router.get("/history", technicianController.getHistory);
+
+router.get("/job/:bookingId", technicianController.getJobDetail);
+
+router.patch("/start/:bookingId", technicianController.startJob);
+router.patch("/checklist/:bookingId", technicianController.updateChecklist);
+router.post("/upload-photos/:bookingId", technicianController.uploadPhotos);
+router.patch("/summary/:bookingId", technicianController.saveSummary);
+router.patch("/complete/:bookingId", technicianController.completeJob);
+
+module.exports = router;
