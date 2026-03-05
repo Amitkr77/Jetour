@@ -74,7 +74,8 @@ exports.sendOtp = async (req, res) => {
 
     res.status(200).json({
         success: true,
-        message: `OTP sent to ${contact_number} is ${otp} for testing purposes`
+        message: `OTP sent to ${contact_number}`,
+        "otp": otp
     });
 };
 
