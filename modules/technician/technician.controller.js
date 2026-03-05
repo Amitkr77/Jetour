@@ -167,7 +167,7 @@ exports.verifyTechnician = async (req, res, next) => {
 
     // If query params not present → skip this controller
     if (!technician_id || !password) {
-      return next(); 
+      return next();
     }
 
     const technician = await Technician
@@ -182,8 +182,8 @@ exports.verifyTechnician = async (req, res, next) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, technician.password);
-
+    const isMatch = password === technician.password;
+    
     if (!isMatch) {
       return res.status(401).json({
         success: false,

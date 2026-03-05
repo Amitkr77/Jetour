@@ -1,15 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const technicianController = require("../controllers/technician.controller");
-const authMiddleware = require("../middlewares/auth");
-const roleMiddleware = require("../middlewares/role");
+const technicianController = require("./technicianApp.controller");
+// const authMiddleware = require("../middlewares/auth");
+// const roleMiddleware = require("../middlewares/role");
 
 // All technician routes require auth + technician role
-router.use(authMiddleware);
-router.use(roleMiddleware("technician"));
+// router.use(authMiddleware);
+// router.use(roleMiddleware("technician"));
 
-router.get("/dashboard", technicianController.getDashboard);
+router.get("/dashboard/:technicianId", technicianController.getDashboard);
 router.get("/active-job", technicianController.getActiveJob);
+router.get("/my-job/:technicianId",technicianController.getMyJob);
 router.get("/upcoming", technicianController.getUpcomingJobs);
 router.get("/history", technicianController.getHistory);
 

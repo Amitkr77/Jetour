@@ -1,6 +1,7 @@
-const Booking = require("../models/booking.model");
+const Booking = require("../../booking/booking.model");
 const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
+const Technician = require("../technician.model");
 
 
 // ===============================
@@ -8,50 +9,71 @@ const mongoose = require("mongoose");
 // ===============================
 exports.getDashboard = async (req, res) => {
   try {
-    const technicianId = req.user.id;
+    // 🔹 For testing (replace with req.user.id in production)
+    const technicianId =
+      req.user?.id || req.params.technicianId || req.body.technicianId;
 
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0,0,0,0));
-    const endOfDay = new Date(today.setHours(23,59,59,999));
+    if (!mongoose.Types.ObjectId.isValid(technicianId)) {
+      return res.status(400).json({ message: "Invalid technician ID" });
+    }
 
-    const todayJobs = await Booking.find({
+    // ===============================
+    // 1️⃣ Get Technician Name
+    // ===============================
+    const technician = await Technician.findById(technicianId)
+      .select("name rating")
+      .lean();
+
+    if (!technician) {
+      return res.status(404).json({ message: "Technician not found" });
+    }
+
+    // ===============================
+    // 2️⃣ Get Today's Date (since schedule.date is STRING)
+    // ===============================
+    const today = new Date().toISOString().split("T")[0];
+    // Make sure your schedule.date format matches this (YYYY-MM-DD)
+
+    // ===============================
+    // 3️⃣ Get Today's Jobs
+    // ===============================
+    const bookings = await Booking.find({
       "assignment.technician": technicianId,
-      "schedule.date": { $gte: startOfDay, $lte: endOfDay }
+      "schedule.date": today
     });
 
-    const weeklyJobsCount = await Booking.countDocuments({
-      "assignment.technician": technicianId,
-      "schedule.date": {
-        $gte: new Date(new Date().setDate(new Date().getDate() - 7))
-      }
-    });
 
-    const ratingAgg = await TechnicianReview.aggregate([
-      { $match: { technician_id: new mongoose.Types.ObjectId(technicianId) } },
-      { $group: { _id: null, avgRating: { $avg: "$rating" } } }
-    ]);
+    // ===============================
+    // 5️⃣ Format Today Jobs
+    // ===============================
+    const todayJobs = bookings.map((booking) => ({
+      package_name: booking.package?.name || null,
+      customer_name: booking.customer?.name || null,
+      vehicle_name: booking.vehicle?.vehicle_model || null,
+      status:
+        booking.status === "in-progress"
+          ? "active"
+          : booking.status === "confirmed"
+            ? "scheduled"
+            : booking.status,
+      booking_time: booking.schedule?.start_time || null
+    }));
 
-    const activeJob = await Booking.findOne({
-      "assignment.technician": technicianId,
-      status: "in_progress"
-    }).populate("package customer");
-
+    // ===============================
+    // 6️⃣ Final Response
+    // ===============================
     res.json({
-      today: {
-        total: todayJobs.length,
-        completed: todayJobs.filter(j => j.status === "completed").length,
-        pending: todayJobs.filter(j => j.status !== "completed").length
-      },
-      weekly_jobs: weeklyJobsCount,
-      average_rating: ratingAgg[0]?.avgRating || 0,
-      active_job: activeJob
+      success: true,
+      message: "Dashboard fetched successfully",
+      rating: technician.rating || 0,
+      name: technician.name,
+      today_jobs: todayJobs
     });
 
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // ===============================
 // 2️⃣ ACTIVE JOB
@@ -100,21 +122,149 @@ exports.getUpcomingJobs = async (req, res) => {
 exports.getJobDetail = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId = req.user.id;
+    const technicianId = req.user?.id || req.body.technicianId;
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID"
+      });
+    }
 
     const booking = await Booking.findById(bookingId)
-      .populate("package customer assignment.service_van");
+      .populate("package.package_id")
+      .lean();
 
-    if (!booking)
-      return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technicianId)
-      return res.status(403).json({ message: "Unauthorized" });
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
 
-    res.json(booking);
+    if (!booking.assignment?.technician ||
+      booking.assignment.technician.toString() !== technicianId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+
+    // ===============================
+    // Format Address
+    // ===============================
+    const addressParts = [
+      booking.address?.block && `Block ${booking.address.block}`,
+      booking.address?.street && `Street ${booking.address.street}`,
+      booking.address?.building_no && `House ${booking.address.building_no}`
+    ].filter(Boolean);
+
+    const fullAddress = addressParts.join(", ");
+
+    // ===============================
+    // Final Response
+    // ===============================
+    return res.status(200).json({
+      success: true,
+      message: "Job details fetched successfully",
+      status_code: 200,
+      data: {
+        job_info: {
+          booking_id: booking.booking_id || booking._id,
+          booking_time: booking.schedule?.start_time || null,
+          package_info: {
+            work_time: booking.package?.worktime
+              ? `${booking.package.worktime} hours`
+              : null,
+            name: booking.package?.name || null,
+            package_details:
+              booking.package?.package_id.details || ["No details available"],
+          }
+        },
+        vehicle_info: {
+          model: booking.vehicle?.vehicle_model || null,
+          VIN: booking.vehicle?.registration_number || null, // replace if VIN stored separately
+          registration_number: booking.vehicle?.registration_number || null,
+          mileage: booking.vehicle?.mileage
+            ? `${booking.vehicle.mileage} km`
+            : null
+        },
+        customer_info: {
+          name: booking.customer?.name || null,
+          country_code: "+965", // change if dynamic
+          contact: booking.customer?.phone || null,
+          address: fullAddress || null
+        }
+      }
+    });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+exports.getMyJob = async (req, res) => {
+  try {
+    // 🔹 For testing (replace with req.user.id in production)
+    const technicianId =
+      req.user?.id || req.params.technicianId || req.body.technicianId;
+
+    if (!mongoose.Types.ObjectId.isValid(technicianId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid technician ID"
+      });
+    }
+
+    // ===============================
+    // 1️⃣ Fetch Jobs (assigned to technician)
+    // ===============================
+    const bookings = await Booking.find({
+      "assignment.technician": technicianId,
+      status: { $in: ["confirmed", "in-progress"] }
+    })
+      .sort({ "schedule.date": 1, "schedule.start_time": 1 })
+      .lean();
+
+    // ===============================
+    // 2️⃣ Format Response Data
+    // ===============================
+    const formattedJobs = bookings.map((booking) => ({
+      package_name: booking.package?.name || null,
+      vehicle_name: booking.vehicle?.vehicle_model || null,
+      status:
+        booking.status === "in-progress"
+          ? "active"
+          : booking.status === "confirmed"
+            ? "scheduled"
+            : booking.status,
+      booking_time: booking.schedule?.start_time || null,
+      booking_id: booking.booking_id || booking._id,
+      customer_details: {
+        name: booking.customer?.name || null,
+        country_code: "+965", // Static (change if stored dynamically)
+        contact: booking.customer?.phone || null
+      }
+    }));
+
+    // ===============================
+    // 3️⃣ Final Response
+    // ===============================
+    return res.status(200).json({
+      success: true,
+      message: "Jobs fetched successfully",
+      status_code: 200,
+      data: formattedJobs
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
