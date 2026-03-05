@@ -33,10 +33,10 @@ exports.createCustomerVehicle = async (req, res, next) => {
       color,
       user_id
     } = req.body;
+
     //////////////////////////////////////////////////////
     // 🚀 Fetch Customer & Vehicle Model in Parallel
     //////////////////////////////////////////////////////
-
     const [customer, vehicleModel] = await Promise.all([
       Customer.findOne({ id: user_id }),
       Vehicle.findOne({ id: model_id })
@@ -45,7 +45,6 @@ exports.createCustomerVehicle = async (req, res, next) => {
     //////////////////////////////////////////////////////
     // ✅ Validate Customer
     //////////////////////////////////////////////////////
-
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -56,7 +55,6 @@ exports.createCustomerVehicle = async (req, res, next) => {
     //////////////////////////////////////////////////////
     // ✅ Validate Vehicle Model
     //////////////////////////////////////////////////////
-
     if (!vehicleModel) {
       return res.status(404).json({
         success: false,
@@ -80,18 +78,25 @@ exports.createCustomerVehicle = async (req, res, next) => {
     }
 
     //////////////////////////////////////////////////////
-    // 🔥 Create vehicle
+    // 🔥 Prepare Data (Only Required + Provided Fields)
     //////////////////////////////////////////////////////
-    const vehicle = await CustomerVehicle.create({
+    const vehicleData = {
       customer: customer._id,
       vehicle_model: vehicleModel._id,
       registration_number,
-      mileage,
-      category,
-      model_year,
-      variant,
-      color
-    });
+      mileage
+    };
+
+    // Optional fields
+    if (category) vehicleData.category = category;
+    if (model_year) vehicleData.model_year = model_year;
+    if (variant) vehicleData.variant = variant;
+    if (color) vehicleData.color = color;
+
+    //////////////////////////////////////////////////////
+    // 🔥 Create vehicle
+    //////////////////////////////////////////////////////
+    const vehicle = await CustomerVehicle.create(vehicleData);
 
     res.status(201).json({
       success: true,

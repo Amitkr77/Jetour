@@ -15,12 +15,12 @@ exports.createCustomerVehicleSchema = Joi.object({
 
   category: Joi.string()
     .trim()
-    .required(),
+    ,
 
   model_year: Joi.number()
     .min(1900)
-    .max(new Date().getFullYear() + 1)
-    .required(),
+    .max(new Date().getFullYear() + 1),
+    
 
   variant: Joi.string()
     .trim()
