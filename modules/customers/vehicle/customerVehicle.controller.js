@@ -84,8 +84,11 @@ exports.createCustomerVehicle = async (req, res, next) => {
       customer: customer._id,
       vehicle_model: vehicleModel._id,
       registration_number,
-      mileage
+      mileage,
+      ...(vehicleModel.vehicle_image && { image: vehicleModel.vehicle_image })
     };
+    console.log(vehicleModel.vehicle_image);
+    
 
     // Optional fields
     if (category) vehicleData.category = category;
@@ -249,7 +252,8 @@ exports.getCustomerVehicles = async (req, res, next) => {
       category: v.category,
       model_year: v.model_year,
       variant: v.variant,
-      color: v.color
+      color: v.color,
+      image: v.image
     }));
 
     res.status(200).json({

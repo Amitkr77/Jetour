@@ -191,7 +191,6 @@ exports.getCustomerDashboard = async (req, res, next) => {
       user: {
         id: customer.id,
         name: customer.name,
-        contact_number: customer.contact_number,
         location: {
           lat: customer.lat,
           lng: customer.lng
@@ -201,7 +200,8 @@ exports.getCustomerDashboard = async (req, res, next) => {
       vehicle: vehicle
         ? {
           name: vehicle.vehicle_model?.vehicle_model || null,
-          mileage: vehicle.mileage
+          mileage: vehicle.mileage,
+          Image: vehicle.image || null
         }
         : null,
 

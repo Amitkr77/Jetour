@@ -120,8 +120,8 @@ const bookingSchema = new mongoose.Schema(
     payment: {
       method: {
         type: String,
-        enum: ["card", "knet", "tap"],
-        default: "card"
+        enum: ["card", "COD"],
+        default: "COD"
       },
       status: {
         type: String,

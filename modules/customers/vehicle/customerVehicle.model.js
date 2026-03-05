@@ -45,7 +45,8 @@ const customerVehicleSchema = new mongoose.Schema(
     color: {
       type: String,
       trim: true
-    }
+    },
+    image: { type: String, trim: true }
   },
   {
     timestamps: {
