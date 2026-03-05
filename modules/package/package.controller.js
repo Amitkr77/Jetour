@@ -40,7 +40,9 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
     try {
-        const data = await packageService.getPackageById(req.params.id);
+
+         const { id } = req.params;
+        const data = await packageService.getPackageByIdOrCode(id);
 
         if (!data) {
             return res.status(404).json({
@@ -64,8 +66,9 @@ exports.getOne = async (req, res) => {
 
 exports.update = async (req, res) => {
     try {
+        // Pass the package identifier, can be _id or custom package_id
         const data = await packageService.updatePackage(
-            req.params.id,
+            req.params.id,  // you could rename param to "idOrCode" in route for clarity
             req.body
         );
 

@@ -1,5 +1,6 @@
 const Package = require("./package.model");
 const VehicleModel = require("../vehicle/vehicle.model");
+const mongoose = require("mongoose");
 
 exports.createPackage = async (payload) => {
   if (payload.pricing) {
@@ -14,17 +15,30 @@ exports.createPackage = async (payload) => {
       const vehicleSet = new Set();
 
       for (const v of row.vehicles) {
-        if (vehicleSet.has(v.vehicle_Id?.toString() || v.vehicle_model)) {
-          throw new Error("Duplicate vehicle in same mileage row");
-        }
-        vehicleSet.add(v.vehicle_Id?.toString() || v.vehicle_model);
 
-        // If vehicle_Id is provided, fetch model name
-        if (v.vehicle_Id) {
+        // Resolve custom vehicle ID to _id
+        if (v.vehicle_Id && typeof v.vehicle_Id === "string" && !mongoose.Types.ObjectId.isValid(v.vehicle_Id)) {
+          const vehicleDoc = await VehicleModel.findOne({ id: v.vehicle_Id });
+          if (!vehicleDoc) throw new Error(`Vehicle with custom id ${v.vehicle_Id} not found`);
+
+          v.vehicle_Id = vehicleDoc._id;
+          v.vehicle_model = vehicleDoc.vehicle_model; // copy name
+        } else if (v.vehicle_Id) {
+          // If already ObjectId
           const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
           if (!vehicleDoc) throw new Error("Vehicle not found");
           v.vehicle_model = vehicleDoc.vehicle_model;
+        } else if (v.vehicle_model) {
+          // fallback if only model name is sent
+          v.vehicle_model = vehicleDoc.vehicle_model;
         }
+
+        // Duplicate check within same row
+        const key = v.vehicle_Id?.toString() || v.vehicle_model;
+        if (vehicleSet.has(key)) {
+          throw new Error("Duplicate vehicle in same mileage row");
+        }
+        vehicleSet.add(key);
       }
     }
   }
@@ -42,46 +56,88 @@ exports.getAllPackages = async (query) => {
   return await Package.find(filter).sort({ createdAt: -1 });
 };
 
-exports.getPackageById = async (id) => {
-  return await Package.findById(id);
+exports.getPackageByIdOrCode = async (idOrCode) => {
+
+  let pkg;
+
+  if (mongoose.Types.ObjectId.isValid(idOrCode)) {
+    // Try fetching by Mongo _id
+    pkg = await Package.findById(idOrCode);
+  }
+
+  if (!pkg) {
+    // Fallback: fetch by custom package_id
+    pkg = await Package.findOne({ package_id: idOrCode });
+  }
+
+  if (!pkg) throw new Error("Package not found");
+
+  // Transform pricing vehicles to {id, name, price}
+  const pricing = await Promise.all(pkg.pricing.map(async (tier) => {
+    const vehicles = await Promise.all(tier.vehicles.map(async (v) => {
+      const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+
+      return {
+        id: vehicleDoc?.id || v.vehicle_Id.toString(),     // custom vehicle ID
+        name: vehicleDoc?.vehicle_model || v.vehicle_model, // model name
+        price: v.price
+      };
+    }));
+
+    return {
+      mileage: tier.mileage,
+      vehicles
+    };
+  }));
+
+  return {
+    ...pkg.toObject(),
+    pricing
+  };
 };
 
-exports.updatePackage = async (id, payload) => {
+exports.updatePackage = async (idOrCode, payload) => {
 
   if (payload.pricing) {
-
     for (const row of payload.pricing) {
-
       const vehicleSet = new Set();
 
       for (const v of row.vehicles) {
+        // Resolve custom vehicle ID to _id
+        let vehicleDoc;
+        if (v.vehicle_Id && typeof v.vehicle_Id === "string" && !mongoose.Types.ObjectId.isValid(v.vehicle_Id)) {
+          vehicleDoc = await VehicleModel.findOne({ id: v.vehicle_Id });
+          if (!vehicleDoc) throw new Error(`Vehicle with custom id ${v.vehicle_Id} not found`);
+          v.vehicle_Id = vehicleDoc._id;
+        } else if (v.vehicle_Id) {
+          vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+          if (!vehicleDoc) throw new Error("Vehicle not found");
+        }
 
-        if (vehicleSet.has(v.vehicle_Id.toString())) {
+        // Always set vehicle_model from the vehicle document
+        if (vehicleDoc) v.vehicle_model = vehicleDoc.vehicle_model;
+
+        // Duplicate check in same row
+        const key = v.vehicle_Id?.toString() || v.vehicle_model;
+        if (vehicleSet.has(key)) {
           throw new Error("Duplicate vehicle in same mileage row");
         }
-
-        vehicleSet.add(v.vehicle_Id.toString());
-
-        const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
-
-        if (!vehicleDoc) {
-          throw new Error("Vehicle not found");
-        }
-
-        v.vehicle_model = vehicleDoc.name;
+        vehicleSet.add(key);
       }
     }
   }
 
-  const updated = await Package.findByIdAndUpdate(
-    id,
-    payload,
-    { new: true }
-  );
+  // 🔹 Fetch package by _id or package_id
+  let updated;
+  if (mongoose.Types.ObjectId.isValid(idOrCode)) {
+    updated = await Package.findByIdAndUpdate(idOrCode, payload, { new: true });
+  }
 
   if (!updated) {
-    throw new Error("Package not found");
+    updated = await Package.findOneAndUpdate({ package_id: idOrCode }, payload, { new: true });
   }
+
+  if (!updated) throw new Error("Package not found");
 
   return updated;
 };

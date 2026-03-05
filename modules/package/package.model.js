@@ -31,7 +31,7 @@ const pricingSchema = new mongoose.Schema({
 
 const packageSchema = new mongoose.Schema(
   {
-    package_code: {
+    package_id: {
       type: String,
       unique: true,
       immutable: true,
@@ -94,7 +94,7 @@ packageSchema.pre("save", async function () {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    this.package_code = `PKG-${String(counter.seq).padStart(4, "0")}`;
+    this.package_id = `PKG-${String(counter.seq).padStart(4, "0")}`;
   } catch (error) {
     console.error(error);
   }
