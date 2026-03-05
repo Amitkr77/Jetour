@@ -121,7 +121,7 @@ const bookingSchema = new mongoose.Schema(
       method: {
         type: String,
         enum: ["card", "COD"],
-        default: "COD"
+        default: "Card"
       },
       status: {
         type: String,

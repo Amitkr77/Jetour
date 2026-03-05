@@ -117,7 +117,7 @@ exports.confirmBookingPayment = async (req, res) => {
 
     const config = await ScheduleConfig.findOne({}).session(session);
 
-    
+
     const slotInterval = config.slot_interval_minutes;
     const buffer = config.buffer_between_bookings_minutes;
 
@@ -228,6 +228,12 @@ exports.confirmBookingPayment = async (req, res) => {
       needs_attention: needsAttention
     };
 
+    if (payment_method) {
+      if (!["card", "COD"].includes(payment_method)) {
+        throw new Error("Invalid payment method");
+      }
+      booking.payment.method = payment_method;
+    }
     booking.payment.status = "paid";
     booking.status = "confirmed";
 
