@@ -31,7 +31,7 @@ const customerSchema = new mongoose.Schema({
 
   name: {
     type: String,
-    required: true,
+    // required: true,
     trim: true
   },
 
@@ -101,7 +101,12 @@ const customerSchema = new mongoose.Schema({
   },
   // vehicle: vehicleSchema,
 
-  full_address: addressSchema
+  full_address: addressSchema,
+
+  profile_completed: {
+    type: Boolean,
+    default: false
+  }
 
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

@@ -1,6 +1,7 @@
 const Otp = require('../../model/otp.model');
 const Customer = require('./customer.model')
 const jwt = require('jsonwebtoken');
+const twilioClient = require('../../utils/twilloClinet');
 
 exports.verifyOtp = async (req, res) => {
     const { contact_number, otp } = req.body;
@@ -48,35 +49,55 @@ exports.verifyOtp = async (req, res) => {
 
 
 exports.sendOtp = async (req, res) => {
-    const { contact_number } = req.body;
+    try {
+        const { contact_number } = req.body;
 
-    const customer = await Customer.findOne({ contact_number });
+        let customer = await Customer.findOne({ contact_number });
 
-    if (!customer) {
-        return res.status(404).json({
+        // auto register if not exists
+        if (!customer) {
+            customer = await Customer.create({
+                contact_number
+            });
+        }
+
+        // Generate 6 digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+        await Otp.findOneAndUpdate(
+            { contact_number },
+            { otp, expires_at: expiry },
+            { upsert: true, new: true }
+        );
+
+        // Format phone number
+        let phone = contact_number.trim();
+        if (!phone.startsWith('+')) {
+            phone = '+91' + phone.replace(/\D/g, '').slice(-10);
+        }
+
+        // Send SMS via Twilio
+        await twilioClient.messages.create({
+            body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: phone
+        });
+
+        res.status(200).json({
+            success: true,
+            message: `OTP sent successfully to ${phone} is ${otp} for testing purposes`
+        });
+
+    } catch (error) {
+        console.error("OTP send error:", error);
+
+        res.status(500).json({
             success: false,
-            message: "Customer not found"
+            message: "Failed to send OTP"
         });
     }
-
-    // Generate 6 digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const expiry = new Date(Date.now() + 5 * 60 * 1000);
-
-    await Otp.findOneAndUpdate(
-        { contact_number },
-        { otp, expires_at: expiry },
-        { upsert: true, new: true }
-    );
-
-    // TODO: Integrate SMS provider here
-
-    res.status(200).json({
-        success: true,
-        message: `OTP sent to ${contact_number}`,
-        "otp": otp
-    });
 };
 
 exports.resendOtp = async (req, res) => {
