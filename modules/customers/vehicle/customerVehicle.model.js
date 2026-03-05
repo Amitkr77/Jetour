@@ -28,13 +28,13 @@ const customerVehicleSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      required: true,
+      // required: true,
       trim: true
     },
 
     model_year: {
       type: Number,
-      required: true
+      // required: true
     },
 
     variant: {
