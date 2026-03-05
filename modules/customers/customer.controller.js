@@ -134,23 +134,32 @@ exports.getCustomerDashboard = async (req, res, next) => {
   try {
 
     const { user_id } = req.query;
-    console.log(user_id);
-
 
     //////////////////////////////////////////////////////
-    // ✅ Validate ID
+    // ✅ Validate input
     //////////////////////////////////////////////////////
-    if (!user_id || !mongoose.Types.ObjectId.isValid(user_id)) {
+    if (!user_id) {
       return res.status(400).json({
         success: false,
-        message: "Valid user_id is required"
+        message: "user_id is required"
       });
     }
 
     //////////////////////////////////////////////////////
-    // ✅ Fetch Customer
+    // ✅ Find customer using _id OR custom id
     //////////////////////////////////////////////////////
-    const customer = await Customer.findById(user_id);
+    let customer;
+
+    if (mongoose.Types.ObjectId.isValid(user_id)) {
+      customer = await Customer.findOne({
+        $or: [
+          { _id: user_id },
+          { id: user_id }
+        ]
+      });
+    } else {
+      customer = await Customer.findOne({ id: user_id });
+    }
 
     if (!customer) {
       return res.status(404).json({
@@ -160,9 +169,11 @@ exports.getCustomerDashboard = async (req, res, next) => {
     }
 
     //////////////////////////////////////////////////////
-    // ✅ Fetch Primary Vehicle (latest created)
+    // ✅ Fetch Vehicle
     //////////////////////////////////////////////////////
-    const vehicle = await CustomerVehicle.findOne({ customer: user_id })
+    const vehicle = await CustomerVehicle.findOne({
+      customer: customer._id
+    })
       .sort({ created_at: -1 })
       .populate("vehicle_model");
 
@@ -170,30 +181,35 @@ exports.getCustomerDashboard = async (req, res, next) => {
     // ✅ Fetch Last Booking
     //////////////////////////////////////////////////////
     const lastBooking = await Booking.findOne({
-      "customer.customer_id": user_id
+      "customer.customer_id": customer._id
     }).sort({ created_at: -1 });
 
     //////////////////////////////////////////////////////
-    // 🔥 Build Custom Response
+    // 🔥 Response
     //////////////////////////////////////////////////////
     const response = {
       user: {
+        id: customer.id,
         name: customer.name,
+        contact_number: customer.contact_number,
         location: {
           lat: customer.lat,
           lng: customer.lng
         }
       },
+
       vehicle: vehicle
         ? {
           name: vehicle.vehicle_model?.vehicle_model || null,
           mileage: vehicle.mileage
         }
         : null,
+
       preferred_language: customer.preferred_language,
+
       last_booking: lastBooking
         ? {
-          booking_id: lastBooking.id || lastBooking._id,
+          booking_id: lastBooking._id,
           package_name: lastBooking.package?.name || null,
           price: lastBooking.package?.total_amount || null
         }
