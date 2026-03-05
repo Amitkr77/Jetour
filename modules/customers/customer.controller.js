@@ -201,7 +201,7 @@ exports.getCustomerDashboard = async (req, res, next) => {
         ? {
           name: vehicle.vehicle_model?.vehicle_model || null,
           mileage: vehicle.mileage,
-          Image: vehicle.image || null
+          image: vehicle.image || null
         }
         : null,
 
