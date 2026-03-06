@@ -62,15 +62,17 @@ exports.getAllCustomers = async (queryParams) => {
 };
 
 exports.getCustomerById = async (id) => {
-  return Customer.findById(id).populate({
-    path: "vehicles",
-    populate: { path: "vehicle_model" }
-  });
+  return Customer.findById(id).populate("vehicles")
 };
+
+// .populate({
+//     path: "vehicles",
+//     populate: { path: "vehicle_model" }
+//   });
 
 exports.updateCustomer = async (id, data) => {
   return Customer.findByIdAndUpdate(id, data, { new: true });
-};
+}; 0.78
 
 exports.deleteCustomer = async (id) => {
   return Customer.findByIdAndDelete(id);

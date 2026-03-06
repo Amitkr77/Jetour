@@ -83,12 +83,11 @@ exports.createCustomerVehicle = async (req, res, next) => {
     const vehicleData = {
       customer: customer._id,
       vehicle_model: vehicleModel._id,
+      id: vehicleModel.id,
       registration_number,
       mileage,
       ...(vehicleModel.vehicle_image && { image: vehicleModel.vehicle_image })
     };
-    console.log(vehicleModel.vehicle_image);
-    
 
     // Optional fields
     if (category) vehicleData.category = category;

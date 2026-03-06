@@ -154,15 +154,11 @@ exports.changeStatus = async (id, status) => {
 exports.calculatePackagePrice = (servicePackage, vehicle) => {
   const { mileage, vehicle_id } = vehicle;
 
-
-
   const sortedPricing = servicePackage.pricing.sort(
     (a, b) => a.mileage - b.mileage
   );
 
-  const mileageTier = sortedPricing.find(
-    tier => mileage <= tier.mileage
-  );
+  const mileageTier = sortedPricing.filter(tier => tier.mileage <= mileage).pop() || sortedPricing[0];
 
 
   if (!mileageTier) {

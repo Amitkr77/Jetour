@@ -2,6 +2,7 @@
 
 const mongoose = require("mongoose");
 const Booking = require("../booking/booking.model");
+const CustomerModel = require("../customers/customer.model");
 const ServicePackage = require("../package/package.model");
 const VanSlot = require("../vanSlot/vanSlot.model");
 const ServiceVan = require("../serviceVan/serviceVan.model");
@@ -10,90 +11,173 @@ const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
 const { calculatePackagePrice } = require("../package/package.service");
 
+
 exports.createCustomerBooking = async (req, res) => {
   try {
-    const {
-      customer,
-      address,
-      vehicle,
-      packageId,
-      booking_date,
-      booking_time,
-      payment_method,
-      additional_notes
-    } = req.body;
+    const { customer_id, vehicle_id, packageId, booking_date, booking_time, additional_notes } = req.body;
+
+    // 1️⃣ Fetch customer by custom ID AND populate vehicles
+    const customer = await CustomerModel.findOne({ id: customer_id })
+      .populate("vehicles");
+    if (!customer) return res.status(400).json({ message: "Customer not found" });
 
 
-    if (!mongoose.Types.ObjectId.isValid(packageId)) {
-      return res.status(400).json({ message: `Invalid package ID format: ${packageId}` });
-    }
+    // 2️⃣ Find the requested vehicle from the customer's vehicles
+    const vehicle = customer.vehicles.find(v => v.id === vehicle_id);
+    if (!vehicle) return res.status(400).json({ message: "Vehicle not found for this customer" });
 
-    const servicePackage = await ServicePackage.findById(packageId);
+    // 3️⃣ Fetch service package by custom package ID
+    const servicePackage = await ServicePackage.findOne({ package_id: packageId });
+    if (!servicePackage) return res.status(400).json({ message: "Package not found" });
 
-    if (!servicePackage) {
-      return res.status(400).json({ message: "Invalid package" });
-    }
+    // 4️⃣ Prepare vehicle payload for price calculation
+    const vehiclePayload = {
+      vehicle_id: vehicle.vehicle_model,
+      mileage: vehicle.mileage || 0
+    };
 
-    // 2. Calculate amount (use your existing logic)
-    // const amount = servicePackage.price;
-    if (!mongoose.Types.ObjectId.isValid(vehicle.vehicle_id)) {
-      return res.status(400).json({ message: "Invalid vehicle ID" });
-    }
-    const vehiclPlayload = {
-      vehicle_id: vehicle.vehicle_id,
-      mileage: vehicle.mileage
-    }
+    // 5️⃣ Calculate base price
+    const base_price = calculatePackagePrice(servicePackage, vehiclePayload);
 
-    const base_price = calculatePackagePrice(servicePackage, vehiclPlayload);
-
-    // Get global settings
+    // 6️⃣ Fetch global settings (service fee)
     const settings = await Settings.findOne({});
-
-    if (!settings) {
-      return res.status(500).json({ message: "Settings not configured" });
-    }
-
-    const service_fee = settings.service_fee || 0;
-
+    const service_fee = settings?.service_fee || 0;
     const total_amount = base_price + service_fee;
 
-    // 3. Create booking as PENDING
+    // 7️⃣ Create booking
     const booking = await Booking.create({
-
-      created_by: "customer",
-
-      customer,
-      address,
-      vehicle,
+      customer: {
+        customer_id: customer._id, // Mongo _id reference
+        name: customer.name,
+        email: customer.email,
+        phone: customer.contact_number,
+        gender: customer.gender,
+        address: customer.full_address
+      },
+      vehicle: {
+        vehicle_id: vehicle._id, // Mongo _id reference
+        vehicle_model: vehicle.vehicle_model,
+        registration_number: vehicle.registration_number || "",
+        // model_year: vehicle.model_year || null,
+        mileage: vehicle.mileage || 0
+      },
       package: {
-        package_id: servicePackage._id,
+        package_id: servicePackage._id, // Mongo _id reference
         name: servicePackage.name,
         worktime: servicePackage.worktime,
         base_price,
         service_fee,
         total_amount
-      }, schedule: {
+      },
+      schedule: {
         date: booking_date,
         start_time: booking_time,
         slot_ids: []
       },
-      payment: {
-        method: payment_method,
-        status: "pending",
-      },
+      // payment: {
+      //   method: payment_method || "Card",
+      //   status: "pending"
+      // },
       status: "pending",
       additional_notes
     });
 
-    res.status(201).json({
+    return res.status(201).json({
+      success: true,
       message: "Booking created. Awaiting payment confirmation.",
       booking
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error creating booking:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// exports.createCustomerBooking = async (req, res) => {
+//   try {
+//     const {
+//       customer,
+//       address,
+//       vehicle,
+//       packageId,
+//       booking_date,
+//       booking_time,
+//       payment_method,
+//       additional_notes
+//     } = req.body;
+
+
+//     if (!mongoose.Types.ObjectId.isValid(packageId)) {
+//       return res.status(400).json({ message: `Invalid package ID format: ${packageId}` });
+//     }
+
+//     const servicePackage = await ServicePackage.findById(packageId);
+
+//     if (!servicePackage) {
+//       return res.status(400).json({ message: "Invalid package" });
+//     }
+
+//     // 2. Calculate amount (use your existing logic)
+//     // const amount = servicePackage.price;
+//     if (!mongoose.Types.ObjectId.isValid(vehicle.vehicle_id)) {
+//       return res.status(400).json({ message: "Invalid vehicle ID" });
+//     }
+//     const vehiclPlayload = {
+//       vehicle_id: vehicle.vehicle_id,
+//       mileage: vehicle.mileage
+//     }
+
+//     const base_price = calculatePackagePrice(servicePackage, vehiclPlayload);
+
+//     // Get global settings
+//     const settings = await Settings.findOne({});
+
+//     if (!settings) {
+//       return res.status(500).json({ message: "Settings not configured" });
+//     }
+
+//     const service_fee = settings.service_fee || 0;
+
+//     const total_amount = base_price + service_fee;
+
+//     // 3. Create booking as PENDING
+//     const booking = await Booking.create({
+
+//       created_by: "customer",
+
+//       customer,
+//       address,
+//       vehicle,
+//       package: {
+//         package_id: servicePackage._id,
+//         name: servicePackage.name,
+//         worktime: servicePackage.worktime,
+//         base_price,
+//         service_fee,
+//         total_amount
+//       }, schedule: {
+//         date: booking_date,
+//         start_time: booking_time,
+//         slot_ids: []
+//       },
+//       payment: {
+//         method: payment_method,
+//         status: "pending",
+//       },
+//       status: "pending",
+//       additional_notes
+//     });
+
+//     res.status(201).json({
+//       message: "Booking created. Awaiting payment confirmation.",
+//       booking
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
 
 exports.confirmBookingPayment = async (req, res) => {
   const session = await mongoose.startSession();
@@ -212,10 +296,8 @@ exports.confirmBookingPayment = async (req, res) => {
       { session }
     );
 
-    console.log(selectedVan);
 
     const van = await ServiceVan.findById(selectedVan).session(session);
-    console.log(van);
 
 
     if (!van) {

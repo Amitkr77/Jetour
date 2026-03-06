@@ -11,7 +11,6 @@ const bookingSchema = new mongoose.Schema(
     created_by: {
       type: String,
       enum: ["customer", "admin"],
-      required: true
     },
 
     // ---------------- CUSTOMER DETAILS ----------------
@@ -23,7 +22,7 @@ const bookingSchema = new mongoose.Schema(
       },
       name: { type: String, required: true },
       email: { type: String },
-      gender: { type: String, enum: ["male", "female"] },
+      gender: { type: String, enum: ["Male", "Female"] },
       phone: { type: String, required: true },
     },
 
@@ -53,7 +52,6 @@ const bookingSchema = new mongoose.Schema(
         required: true
       },
       registration_number: { type: String, required: true },
-      model_year: { type: Number, required: true },
       mileage: { type: Number, required: true }
     },
 

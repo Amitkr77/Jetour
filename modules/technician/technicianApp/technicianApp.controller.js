@@ -2,7 +2,8 @@ const Booking = require("../../booking/booking.model");
 const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
-
+// const createUploader = require('../../../utils/uploadImage');
+// const parser = createUploader('booking/serivice');
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -286,7 +287,7 @@ exports.startJob = async (req, res) => {
     if (booking.assignment.technician.toString() !== technicianId)
       return res.status(403).json({ message: "Unauthorized" });
 
-    booking.status = "in_progress";
+    // booking.status = "in_progress";
     booking.service_progress.status = "in_progress";
     booking.service_progress.started_at = new Date();
 
@@ -306,7 +307,7 @@ exports.startJob = async (req, res) => {
 exports.updateChecklist = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId = req.user.id;
+    const technicianId = req.user?.id || req.body.technicianId;
 
     const booking = await Booking.findById(bookingId);
 
@@ -334,25 +335,40 @@ exports.updateChecklist = async (req, res) => {
 exports.uploadPhotos = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { type, images } = req.body;
-    const technicianId = req.user.id;
+    const { type } = req.body;
+    const technicianId = req.user?.id || req.body.technicianId;
 
     const booking = await Booking.findById(bookingId);
 
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technicianId)
+    if (!booking.assignment.technician ||
+      booking.assignment.technician.toString() !== technicianId)
       return res.status(403).json({ message: "Unauthorized" });
 
-    if (type === "before")
-      booking.service_progress.before_photos.push(...images);
-    else if (type === "after")
-      booking.service_progress.after_photos.push(...images);
+    if (!req.files || req.files.length === 0)
+      return res.status(400).json({ message: "No images uploaded" });
+
+    // Extract cloudinary URLs
+    const imageUrls = req.files.map(file => file.path);
+
+    if (type === "before") {
+      booking.service_progress.before_photos.push(...imageUrls);
+    }
+    else if (type === "after") {
+      booking.service_progress.after_photos.push(...imageUrls);
+    }
+    else {
+      return res.status(400).json({ message: "Invalid photo type" });
+    }
 
     await booking.save();
 
-    res.json({ message: "Photos uploaded" });
+    res.json({
+      message: "Photos uploaded successfully",
+      images: imageUrls
+    });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

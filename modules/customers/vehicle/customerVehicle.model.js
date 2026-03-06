@@ -46,7 +46,13 @@ const customerVehicleSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
-    image: { type: String, trim: true }
+    image: { type: String, trim: true },
+    id: {
+      type: String,
+      unique: true,
+      required: true,
+      trim: true
+    }
   },
   {
     timestamps: {

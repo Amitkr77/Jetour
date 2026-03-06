@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const technicianController = require("./technicianApp.controller");
+const createUploader = require('../../../utils/uploadImage');
+const parser = createUploader('booking/serivice');
 // const authMiddleware = require("../middlewares/auth");
 // const roleMiddleware = require("../middlewares/role");
 
