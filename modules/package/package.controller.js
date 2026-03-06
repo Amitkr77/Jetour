@@ -189,7 +189,7 @@ exports.getAllPackagesWithPrice = async (req, res) => {
     const vehicleIdStr = vehicleObjectId.toString();
 
     const packages = await Package.find({})
-      .select("name description pricing")
+      .select("name pricing worktime details" )
       .lean();
 
     const result = [];
