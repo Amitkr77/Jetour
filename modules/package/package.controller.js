@@ -149,87 +149,92 @@ exports.calculatePrice = async (req, res) => {
 };
 
 exports.getAllPackagesWithPrice = async (req, res) => {
-    try {
-        const { vehicleId, mileage } = req.query;
+  try {
+    const { vehicleId, mileage } = req.query;
 
-        if (!vehicleId || !mileage) {
-            return res.status(400).json({
-                success: false,
-                message: "vehicleId and mileage are required",
-            });
-        }
-
-        const mileageNumber = Number(mileage);
-        if (isNaN(mileageNumber)) {
-            return res.status(400).json({
-                success: false,
-                message: "mileage must be a valid number",
-            });
-        }
-
-        let vehicleObjectId;
-
-        // ✅ Check if ObjectId
-        if (mongoose.Types.ObjectId.isValid(vehicleId)) {
-            vehicleObjectId = vehicleId;
-        } else {
-            // ✅ Otherwise search by custom id
-            const vehicle = await Vehicle.findOne({ id: vehicleId });
-
-            if (!vehicle) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Vehicle not found",
-                });
-            }
-
-            vehicleObjectId = vehicle._id;
-        }
-
-        const packages = await Package.find({}).lean();
-
-        const result = packages
-            .map((pkg) => {
-                const sortedPricing = pkg.pricing.sort(
-                    (a, b) => a.mileage - b.mileage
-                );
-
-                const mileageTier = sortedPricing.find(
-                    (tier) => mileageNumber <= tier.mileage
-                );
-
-                if (!mileageTier) return null;
-
-                const vehiclePricing = mileageTier.vehicles.find(
-                    (v) => v.vehicle_Id?.toString() === vehicleObjectId.toString()
-                );
-
-                if (!vehiclePricing) return null;
-
-                return {
-                    ...pkg,
-                    service_price: vehiclePricing.price,
-                };
-            })
-            .filter(Boolean);
-
-        if (!result.length) {
-            return res.status(404).json({
-                success: false,
-                message: "No packages found for this vehicle and mileage",
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Packages retrieved successfully",
-            count: result.length,
-            data: result,
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+    if (!vehicleId || !mileage) {
+      return res.status(400).json({
+        success: false,
+        message: "vehicleId and mileage are required",
+      });
     }
+
+    const mileageNumber = Number(mileage);
+    if (isNaN(mileageNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "mileage must be a valid number",
+      });
+    }
+
+    let vehicleObjectId;
+
+    if (mongoose.Types.ObjectId.isValid(vehicleId) && vehicleId.length === 24) {
+      vehicleObjectId = vehicleId;
+    } else {
+      const vehicle = await Vehicle.findOne({ id: vehicleId })
+        .select("_id")
+        .lean();
+
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: "Vehicle not found",
+        });
+      }
+
+      vehicleObjectId = vehicle._id;
+    }
+
+    const vehicleIdStr = vehicleObjectId.toString();
+
+    const packages = await Package.find({})
+      .select("name description pricing")
+      .lean();
+
+    const result = [];
+
+    for (const pkg of packages) {
+      const sortedPricing = [...pkg.pricing].sort(
+        (a, b) => a.mileage - b.mileage
+      );
+
+      const mileageTier = sortedPricing.find(
+        tier => mileageNumber <= tier.mileage
+      );
+
+      if (!mileageTier) continue;
+
+      const vehiclePricing = mileageTier.vehicles.find(
+        v => v.vehicle_Id?.toString() === vehicleIdStr
+      );
+
+      if (!vehiclePricing) continue;
+
+      result.push({
+        ...pkg,
+        service_price: vehiclePricing.price
+      });
+    }
+
+    if (!result.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No packages found for this vehicle and mileage",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Packages retrieved successfully",
+      count: result.length,
+      data: result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
