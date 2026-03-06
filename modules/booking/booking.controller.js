@@ -236,6 +236,20 @@ exports.confirmBookingPayment = async (req, res) => {
       needs_attention: needsAttention
     };
 
+    // Initialize service progress
+    booking.service_progress = {
+      status: "not_started",
+      pre_inspection: false,
+      checklist_completed: false,
+      before_photos: [],
+      after_photos: [],
+      inventory_updated: false,
+      summary: "",
+      next_service_recommendation: "",
+      started_at: null,
+      completed_at: null
+    };
+
     if (payment_method) {
       if (!["card", "COD"].includes(payment_method)) {
         throw new Error("Invalid payment method");

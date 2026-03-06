@@ -57,6 +57,23 @@ const bookingSchema = new mongoose.Schema(
       mileage: { type: Number, required: true }
     },
 
+    service_progress: {
+      status: {
+        type: String,
+        enum: ["not_started", "in_progress", "completed"],
+        default: "not_started"
+      },
+      pre_inspection: { type: Boolean, default: false },
+      checklist_completed: { type: Boolean, default: false },
+      before_photos: [String],
+      after_photos: [String],
+      inventory_updated: { type: Boolean, default: false },
+      summary: String,
+      next_service_recommendation: String,
+      started_at: Date,
+      completed_at: Date
+    },
+
     // ---------------- PACKAGE SNAPSHOT ----------------
     package: {
       package_id: {

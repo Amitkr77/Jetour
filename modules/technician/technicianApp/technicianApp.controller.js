@@ -206,6 +206,7 @@ exports.getJobDetail = async (req, res) => {
     });
   }
 };
+
 exports.getMyJob = async (req, res) => {
   try {
     // 🔹 For testing (replace with req.user.id in production)
@@ -275,7 +276,7 @@ exports.getMyJob = async (req, res) => {
 exports.startJob = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId = req.user.id;
+    const technicianId = req.body.technicianId;
 
     const booking = await Booking.findById(bookingId);
 
