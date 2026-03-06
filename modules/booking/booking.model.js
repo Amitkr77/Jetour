@@ -20,7 +20,7 @@ const bookingSchema = new mongoose.Schema(
         ref: "Customer",
         required: true
       },
-      name: { type: String, required: true },
+      name: { type: String, },
       email: { type: String },
       gender: { type: String, enum: ["Male", "Female"] },
       phone: { type: String, required: true },
