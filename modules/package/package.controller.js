@@ -1,9 +1,9 @@
 const packageService = require("./package.service");
 const ServicePackage = require("./package.model");
 const { calculatePackagePrice } = require("./package.service");
-const VehicleModel = require("../vehicle/vehicle.model");
 const mongoose = require("mongoose");
 const Package = require("./package.model");
+const Vehicle = require("../vehicle/vehicle.model");
 
 exports.create = async (req, res) => {
     try {
@@ -152,18 +152,10 @@ exports.getAllPackagesWithPrice = async (req, res) => {
     try {
         const { vehicleId, mileage } = req.query;
 
-        // Validate params
         if (!vehicleId || !mileage) {
             return res.status(400).json({
                 success: false,
-                message: "vehicleId and mileage are required"
-            });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid vehicleId"
+                message: "vehicleId and mileage are required",
             });
         }
 
@@ -171,33 +163,52 @@ exports.getAllPackagesWithPrice = async (req, res) => {
         if (isNaN(mileageNumber)) {
             return res.status(400).json({
                 success: false,
-                message: "mileage must be a valid number"
+                message: "mileage must be a valid number",
             });
         }
 
-        // Fetch packages
+        let vehicleObjectId;
+
+        // ✅ Check if ObjectId
+        if (mongoose.Types.ObjectId.isValid(vehicleId)) {
+            vehicleObjectId = vehicleId;
+        } else {
+            // ✅ Otherwise search by custom id
+            const vehicle = await Vehicle.findOne({ id: vehicleId });
+
+            if (!vehicle) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Vehicle not found",
+                });
+            }
+
+            vehicleObjectId = vehicle._id;
+        }
+
         const packages = await Package.find({}).lean();
 
         const result = packages
-            .map(pkg => {
-
-                const sortedPricing = pkg.pricing.sort((a, b) => a.mileage - b.mileage);
+            .map((pkg) => {
+                const sortedPricing = pkg.pricing.sort(
+                    (a, b) => a.mileage - b.mileage
+                );
 
                 const mileageTier = sortedPricing.find(
-                    tier => mileageNumber <= tier.mileage
+                    (tier) => mileageNumber <= tier.mileage
                 );
 
                 if (!mileageTier) return null;
 
                 const vehiclePricing = mileageTier.vehicles.find(
-                    v => v.vehicle_Id?.toString() === vehicleId
+                    (v) => v.vehicle_Id?.toString() === vehicleObjectId.toString()
                 );
 
                 if (!vehiclePricing) return null;
 
                 return {
                     ...pkg,
-                    service_price: vehiclePricing.price
+                    service_price: vehiclePricing.price,
                 };
             })
             .filter(Boolean);
@@ -205,7 +216,7 @@ exports.getAllPackagesWithPrice = async (req, res) => {
         if (!result.length) {
             return res.status(404).json({
                 success: false,
-                message: "No packages found for this vehicle and mileage"
+                message: "No packages found for this vehicle and mileage",
             });
         }
 
@@ -213,13 +224,12 @@ exports.getAllPackagesWithPrice = async (req, res) => {
             success: true,
             message: "Packages retrieved successfully",
             count: result.length,
-            data: result
+            data: result,
         });
-
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message,
         });
     }
 };
