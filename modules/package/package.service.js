@@ -2,64 +2,46 @@ const Package = require("./package.model");
 const VehicleModel = require("../vehicle/vehicle.model");
 const mongoose = require("mongoose");
 
-
 exports.createPackage = async (payload) => {
-
-  const vehicles = await VehicleModel.find({ status: "active" }).sort({ createdAt: 1 });
-
-  if (!vehicles.length) {
-    throw new Error("No vehicles available");
-  }
-
-  const mileageSet = new Set();
-  const formattedPricing = [];
-
-  // CASE 1: Pricing provided by admin
-  if (payload.pricing && payload.pricing.length) {
+  if (payload.pricing) {
+    const mileageSet = new Set();
 
     for (const row of payload.pricing) {
-
       if (mileageSet.has(row.mileage)) {
-        throw new Error(`Duplicate mileage entry: ${row.mileage}`);
+        throw new Error("Duplicate mileage entry");
       }
       mileageSet.add(row.mileage);
 
-      if (!row.prices || row.prices.length !== vehicles.length) {
-        throw new Error(
-          `Prices count must match number of vehicles (${vehicles.length})`
-        );
+      const vehicleSet = new Set();
+
+      for (const v of row.vehicles) {
+
+        // Resolve custom vehicle ID to _id
+        if (v.vehicle_Id && typeof v.vehicle_Id === "string" && !mongoose.Types.ObjectId.isValid(v.vehicle_Id)) {
+          const vehicleDoc = await VehicleModel.findOne({ id: v.vehicle_Id });
+          if (!vehicleDoc) throw new Error(`Vehicle with custom id ${v.vehicle_Id} not found`);
+
+          v.vehicle_Id = vehicleDoc._id;
+          v.vehicle_model = vehicleDoc.vehicle_model; // copy name
+        } else if (v.vehicle_Id) {
+          // If already ObjectId
+          const vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+          if (!vehicleDoc) throw new Error("Vehicle not found");
+          v.vehicle_model = vehicleDoc.vehicle_model;
+        } else if (v.vehicle_model) {
+          // fallback if only model name is sent
+          v.vehicle_model = vehicleDoc.vehicle_model;
+        }
+
+        // Duplicate check within same row
+        const key = v.vehicle_Id?.toString() || v.vehicle_model;
+        if (vehicleSet.has(key)) {
+          throw new Error("Duplicate vehicle in same mileage row");
+        }
+        vehicleSet.add(key);
       }
-
-      const vehiclesPricing = vehicles.map((vehicle, index) => ({
-        vehicle_Id: vehicle._id,
-        vehicle_model: vehicle.vehicle_model,
-        price: row.prices[index]
-      }));
-
-      formattedPricing.push({
-        mileage: row.mileage,
-        vehicles: vehiclesPricing
-      });
     }
-
-  } 
-  // CASE 2: No pricing provided → create default
-  else {
-
-    const vehiclesPricing = vehicles.map(vehicle => ({
-      vehicle_Id: vehicle._id,
-      vehicle_model: vehicle.vehicle_model,
-      price: 0
-    }));
-
-    formattedPricing.push({
-      mileage: 1000,
-      vehicles: vehiclesPricing
-    });
-
   }
-
-  payload.pricing = formattedPricing;
 
   return await Package.create(payload);
 };
@@ -116,73 +98,48 @@ exports.getPackageByIdOrCode = async (idOrCode) => {
 
 exports.updatePackage = async (idOrCode, payload) => {
 
-  if (payload.pricing && payload.pricing.length) {
-
-    // Fetch all active vehicles
-    const vehicles = await VehicleModel.find({ status: "active" }).sort({ createdAt: 1 });
-
-    if (!vehicles.length) {
-      throw new Error("No vehicles available");
-    }
-
-    const mileageSet = new Set();
-    const formattedPricing = [];
-
+  if (payload.pricing) {
     for (const row of payload.pricing) {
+      const vehicleSet = new Set();
 
-      // Prevent duplicate mileage tiers
-      if (mileageSet.has(row.mileage)) {
-        throw new Error(`Duplicate mileage entry: ${row.mileage}`);
+      for (const v of row.vehicles) {
+        // Resolve custom vehicle ID to _id
+        let vehicleDoc;
+        if (v.vehicle_Id && typeof v.vehicle_Id === "string" && !mongoose.Types.ObjectId.isValid(v.vehicle_Id)) {
+          vehicleDoc = await VehicleModel.findOne({ id: v.vehicle_Id });
+          if (!vehicleDoc) throw new Error(`Vehicle with custom id ${v.vehicle_Id} not found`);
+          v.vehicle_Id = vehicleDoc._id;
+        } else if (v.vehicle_Id) {
+          vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
+          if (!vehicleDoc) throw new Error("Vehicle not found");
+        }
+
+        // Always set vehicle_model from the vehicle document
+        if (vehicleDoc) v.vehicle_model = vehicleDoc.vehicle_model;
+
+        // Duplicate check in same row
+        const key = v.vehicle_Id?.toString() || v.vehicle_model;
+        if (vehicleSet.has(key)) {
+          throw new Error("Duplicate vehicle in same mileage row");
+        }
+        vehicleSet.add(key);
       }
-      mileageSet.add(row.mileage);
-
-      // Validate price count
-      if (!row.prices || row.prices.length !== vehicles.length) {
-        throw new Error(
-          `Prices count must match number of vehicles (${vehicles.length})`
-        );
-      }
-
-      const vehiclesPricing = vehicles.map((vehicle, index) => ({
-        vehicle_Id: vehicle._id,
-        vehicle_model: vehicle.vehicle_model,
-        price: row.prices[index]
-      }));
-
-      formattedPricing.push({
-        mileage: row.mileage,
-        vehicles: vehiclesPricing
-      });
     }
-
-    payload.pricing = formattedPricing;
   }
 
-  let updatedPackage;
-
-  // Update by Mongo _id
+  // 🔹 Fetch package by _id or package_id
+  let updated;
   if (mongoose.Types.ObjectId.isValid(idOrCode)) {
-    updatedPackage = await Package.findByIdAndUpdate(
-      idOrCode,
-      payload,
-      { new: true }
-    );
+    updated = await Package.findByIdAndUpdate(idOrCode, payload, { new: true });
   }
 
-  // Update by custom package_id
-  if (!updatedPackage) {
-    updatedPackage = await Package.findOneAndUpdate(
-      { package_id: idOrCode },
-      payload,
-      { new: true }
-    );
+  if (!updated) {
+    updated = await Package.findOneAndUpdate({ package_id: idOrCode }, payload, { new: true });
   }
 
-  if (!updatedPackage) {
-    throw new Error("Package not found");
-  }
+  if (!updated) throw new Error("Package not found");
 
-  return updatedPackage;
+  return updated;
 };
 
 exports.changeStatus = async (id, status) => {
