@@ -4,7 +4,7 @@ const vanSlotSchema = new mongoose.Schema(
   {
     van_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Van",
+      ref: "ServiceVan",
       required: true,
       index: true
     },
@@ -56,5 +56,8 @@ const vanSlotSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// 🔹 UNIQUE INDEX TO PREVENT DUPLICATE SLOTS FOR SAME VAN AND TIME
+vanSlotSchema.index({ van_id: 1, date: 1, start_time: 1 }, { unique: true });
 
 module.exports = mongoose.model("VanSlot", vanSlotSchema);

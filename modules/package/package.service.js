@@ -179,3 +179,52 @@ exports.calculatePackagePrice = (servicePackage, vehicle) => {
 
   return vehiclePricing.price;
 };
+
+exports.getAllPackagesWithPrice = async (vehicleIdentifier, mileage) => {
+  try {
+    // Resolve vehicle by _id or custom id
+    let vehicle;
+    if (mongoose.Types.ObjectId.isValid(vehicleIdentifier)) {
+      vehicle = await VehicleModel.findById(vehicleIdentifier);
+    }
+    if (!vehicle) {
+      vehicle = await VehicleModel.findOne({ id: vehicleIdentifier });
+    }
+    if (!vehicle) throw new Error("Vehicle not found");
+
+    const vehicleId = vehicle._id;
+
+    // Fetch all packages
+    const packages = await Package.find({}).lean();
+    if (!packages.length) return [];
+
+    const result = packages.map(pkg => {
+      const sortedPricing = pkg.pricing.sort((a, b) => a.mileage - b.mileage);
+
+      // Find tier where mileage <= tier mileage
+      const mileageTier = sortedPricing.find(tier => mileage <= tier.mileage);
+
+      let price = null;
+      if (mileageTier) {
+        const vehiclePricing = mileageTier.vehicles.find(v =>
+          v.vehicle_Id?.toString() === vehicleId.toString() ||
+          v.vehicle_Id?.toString() === vehicle.id.toString()
+        );
+
+        if (vehiclePricing) price = vehiclePricing.price;
+      }
+
+      return {
+        ...pkg,
+        price
+      };
+    });
+
+    // Only return packages where price is not null
+    const filtered = result.filter(pkg => pkg.price !== null);
+
+    return filtered;
+  } catch (error) {
+    throw new Error(`Error occurred while fetching packages with prices: ${error.message}`);
+  }
+};

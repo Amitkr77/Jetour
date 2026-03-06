@@ -3,7 +3,7 @@ const router = express.Router();
 
 const controller = require("./package.controller");
 
-router.post("/",controller.create)
+router.post("/", controller.create)
 
 router.get("/", controller.getAll);
 
@@ -18,5 +18,7 @@ router.patch(
 );
 
 router.post("/calculate-price", controller.calculatePrice);
+
+router.get("/service/price", controller.getAllPackagesWithPrice)
 
 module.exports = router;

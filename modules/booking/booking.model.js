@@ -120,7 +120,7 @@ const bookingSchema = new mongoose.Schema(
     payment: {
       method: {
         type: String,
-        enum: ["card", "COD"],
+        enum: ["Card", "COD"],
         default: "Card"
       },
       status: {

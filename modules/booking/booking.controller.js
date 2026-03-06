@@ -9,7 +9,6 @@ const ScheduleConfig = require("../schedule/schedule.model");
 const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
 const { calculatePackagePrice } = require("../package/package.service");
-const { not } = require("joi");
 
 exports.createCustomerBooking = async (req, res) => {
   try {
@@ -101,7 +100,7 @@ exports.confirmBookingPayment = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { booking_id } = req.body;
+    const { booking_id, payment_method } = req.body;
 
     const booking = await Booking.findById(booking_id)
       .populate("package")
@@ -180,6 +179,7 @@ exports.confirmBookingPayment = async (req, res) => {
           next.getMinutes().toString().padStart(2, "0");
       }
 
+
       if (consecutive.length === requiredSlots) {
         selectedVan = vanId;
         selectedSlots = consecutive;
@@ -212,7 +212,15 @@ exports.confirmBookingPayment = async (req, res) => {
       { session }
     );
 
+    console.log(selectedVan);
+
     const van = await ServiceVan.findById(selectedVan).session(session);
+    console.log(van);
+
+
+    if (!van) {
+      throw new Error("Assigned service van not found");
+    }
 
     const needsAttention = !van.driver || !van.technician;
 

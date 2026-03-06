@@ -13,6 +13,7 @@ exports.generateSlots = async () => {
 
     const vans = await Van.find({ is_active: true });
 
+
     if (!vans.length) {
       console.log("No active vans found");
       return;
@@ -90,7 +91,7 @@ exports.generateSlots = async () => {
       }
     }
 
-    console.log("Slots generated successfully");
+    console.log("Slots generated successfully for the next", maxDays, "days");
   } catch (error) {
     console.error("Slot generation failed:", error.message);
   }
