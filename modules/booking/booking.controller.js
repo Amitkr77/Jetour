@@ -362,6 +362,7 @@ exports.confirmBookingPayment = async (req, res) => {
     session.endSession();
 
     res.json({
+      success: true,
       message: "Booking confirmed successfully",
       booking
     });
