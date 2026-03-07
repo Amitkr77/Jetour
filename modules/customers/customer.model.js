@@ -39,7 +39,7 @@ const customerSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    match: [/^\+[1-9]\d{1,14}$/, 'Invalid phone number format. Use E.164 format']
+
   },
   country_code: {
     type: String,

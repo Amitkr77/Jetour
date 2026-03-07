@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const twilioClient = require('../../utils/twilloClinet');
 
 exports.verifyOtp = async (req, res) => {
+    
     const { contact_number, otp } = req.body;
 
     const record = await Otp.findOne({ contact_number });
