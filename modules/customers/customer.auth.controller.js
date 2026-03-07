@@ -53,7 +53,7 @@ exports.verifyOtp = async (req, res) => {
 
 exports.sendOtp = async (req, res) => {
     try {
-        const { contact_number } = req.body;
+        const { contact_number, country_code } = req.body;
 
         let customer = await Customer.findOne({ contact_number });
 
