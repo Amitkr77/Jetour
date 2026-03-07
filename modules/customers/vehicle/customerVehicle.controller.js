@@ -244,7 +244,7 @@ exports.getCustomerVehicles = async (req, res, next) => {
     // 🔥 Format response
     //////////////////////////////////////////////////////
     const formattedVehicles = vehicles.map(v => ({
-      vehicle_id: v._id,
+      model_id: v.id,
       model_name: v.vehicle_model?.vehicle_model || null,
       registration_number: v.registration_number,
       mileage: v.mileage,
