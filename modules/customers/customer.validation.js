@@ -3,12 +3,9 @@ const Joi = require('joi');
 exports.createCustomerSchema = Joi.object({
   name: Joi.string().trim(),
 
-  contact_number: Joi.string()
-    .pattern(/^\+[1-9]\d{1,14}$/)
-    .required()
-    .messages({ 'string.pattern.base': 'Contact number must be in E.164 format (+country code)' }),
+  contact_number: Joi.string().required(),
 
-  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional().required(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional(),
 
   email: Joi.string().email().lowercase().trim().optional(), civil_id: Joi.string().trim(),
 
@@ -39,9 +36,7 @@ exports.createCustomerSchema = Joi.object({
 
 exports.updateCustomerSchema = Joi.object({
   name: Joi.string().trim(),
-  contact_number: Joi.string()
-    .pattern(/^\+[1-9]\d{1,14}$/)
-    .messages({ 'string.pattern.base': 'Contact number must be in E.164 format (+country code)' }),
+  contact_number: Joi.string(),
   country_code: Joi.string().pattern(/^\+\d{1,3}$/),
   email: Joi.string().email().lowercase().trim().allow('', null),
   civil_id: Joi.string().trim(),
