@@ -62,7 +62,11 @@ exports.getAllCustomers = async (queryParams) => {
 };
 
 exports.getCustomerById = async (id) => {
-  return Customer.findById(id).populate("vehicles")
+  const query = mongoose.Types.ObjectId.isValid(id)
+    ? { $or: [{ _id: id }, { id: id }] }
+    : { id: id };
+
+  return Customer.findOne(query).populate("vehicles");
 };
 
 // .populate({
@@ -71,8 +75,12 @@ exports.getCustomerById = async (id) => {
 //   });
 
 exports.updateCustomer = async (id, data) => {
-  return Customer.findByIdAndUpdate(id, data, { new: true });
-}; 0.78
+  const query = mongoose.Types.ObjectId.isValid(id)
+    ? { $or: [{ _id: id }, { id: id }] }
+    : { id: id };
+
+  return Customer.findOneAndUpdate(query, data, { new: true });
+};
 
 exports.deleteCustomer = async (id) => {
   return Customer.findByIdAndDelete(id);

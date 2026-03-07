@@ -1,16 +1,16 @@
 const Joi = require('joi');
 
 exports.createCustomerSchema = Joi.object({
-  name: Joi.string().trim().required(),
+  name: Joi.string().trim(),
 
   contact_number: Joi.string()
     .pattern(/^\+[1-9]\d{1,14}$/)
     .required()
     .messages({ 'string.pattern.base': 'Contact number must be in E.164 format (+country code)' }),
 
-  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional(),
+  country_code: Joi.string().pattern(/^\+\d{1,3}$/).optional().required(),
 
-  email: Joi.string().email().lowercase().trim().optional(), civil_id: Joi.string().trim().required(),
+  email: Joi.string().email().lowercase().trim().optional(), civil_id: Joi.string().trim(),
 
   gender: Joi.string().valid('Male', 'Female', 'Other').allow(null),
 
