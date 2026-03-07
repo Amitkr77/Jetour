@@ -171,7 +171,7 @@ exports.getCustomerDashboard = async (req, res, next) => {
     //////////////////////////////////////////////////////
     // ✅ Fetch Vehicle
     //////////////////////////////////////////////////////
-    const vehicle = await CustomerVehicle.findOne({
+    const vehicles = await CustomerVehicle.find({
       customer: customer._id
     })
       .sort({ created_at: -1 })
@@ -197,13 +197,13 @@ exports.getCustomerDashboard = async (req, res, next) => {
         }
       },
 
-      vehicle: vehicle
-        ? {
-          name: vehicle.vehicle_model?.vehicle_model || null,
-          mileage: vehicle.mileage,
-          image: vehicle.image || null
-        }
-        : null,
+      vehicle: vehicles.length
+        ? vehicles.map(v => ({
+          name: v.vehicle_model?.vehicle_model || null,
+          mileage: v.mileage,
+          image: v.image || null
+        }))
+        : [],
 
       preferred_language: customer.preferred_language,
 
