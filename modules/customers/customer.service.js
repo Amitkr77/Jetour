@@ -1,4 +1,5 @@
 const Customer = require('./customer.model');
+const mongoose = require("mongoose");
 
 exports.createCustomer = async (data) => {
   return Customer.create(data);
