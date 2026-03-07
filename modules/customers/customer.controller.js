@@ -184,6 +184,13 @@ exports.getCustomerDashboard = async (req, res, next) => {
       "customer.customer_id": customer._id
     }).sort({ created_at: -1 });
 
+    const formattedVehicles = vehicles.map(v => ({
+      name: v.vehicle_model?.vehicle_model || null,
+      mileage: v.mileage,
+      image: v.image || null,
+      is_selected: v.is_selected 
+    }));
+
     //////////////////////////////////////////////////////
     // 🔥 Response
     //////////////////////////////////////////////////////
@@ -197,13 +204,15 @@ exports.getCustomerDashboard = async (req, res, next) => {
         }
       },
 
-      vehicle: vehicles.length
-        ? vehicles.map(v => ({
-          name: v.vehicle_model?.vehicle_model || null,
-          mileage: v.mileage,
-          image: v.image || null
-        }))
-        : [],
+      // vehicle: vehicles.length
+      //   ? vehicles.map(v => ({
+      //     name: v.vehicle_model?.vehicle_model || null,
+      //     mileage: v.mileage,
+      //     image: v.image || null
+      //   }))
+      //   : [],
+
+      vehicle: formattedVehicles.find(v => v.is_selected) || null,
 
       preferred_language: customer.preferred_language,
 

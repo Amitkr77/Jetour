@@ -52,6 +52,10 @@ const customerVehicleSchema = new mongoose.Schema(
       unique: true,
       required: true,
       trim: true
+    },
+    is_selected: {
+      type: Boolean,
+      default: false
     }
   },
   {

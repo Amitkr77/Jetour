@@ -252,13 +252,88 @@ exports.getCustomerVehicles = async (req, res, next) => {
       model_year: v.model_year,
       variant: v.variant,
       color: v.color,
-      image: v.image
+      image: v.image,
+      is_selected: v.is_selected
     }));
 
     res.status(200).json({
       success: true,
       total: formattedVehicles.length,
       data: formattedVehicles
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+exports.selectCustomerVehicle = async (req, res, next) => {
+  try {
+    const { user_id, vehicle_id } = req.body;
+
+    if (!user_id || !vehicle_id) {
+      return res.status(400).json({
+        success: false,
+        message: "user_id and vehicle_id are required"
+      });
+    }
+
+    ////////////////////////////////////////////////////////
+    // Find customer by _id OR custom id
+    ////////////////////////////////////////////////////////
+    let customer;
+    if (mongoose.Types.ObjectId.isValid(user_id)) {
+      customer = await Customer.findOne({ $or: [{ _id: user_id }, { id: user_id }] });
+    } else {
+      customer = await Customer.findOne({ id: user_id });
+    }
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    ////////////////////////////////////////////////////////
+    // Find vehicle by _id OR custom id
+    ////////////////////////////////////////////////////////
+    let vehicle;
+    if (mongoose.Types.ObjectId.isValid(vehicle_id)) {
+      vehicle = await CustomerVehicle.findOne({
+        $or: [{ _id: vehicle_id }, { id: vehicle_id }],
+        customer: customer._id
+      });
+    } else {
+      vehicle = await CustomerVehicle.findOne({ id: vehicle_id, customer: customer._id });
+    }
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found for this customer"
+      });
+    }
+
+    ////////////////////////////////////////////////////////
+    // Unselect all other vehicles
+    ////////////////////////////////////////////////////////
+    await CustomerVehicle.updateMany(
+      { customer: customer._id, _id: { $ne: vehicle._id } },
+      { $set: { is_selected: false } }
+    );
+
+    ////////////////////////////////////////////////////////
+    // Select the chosen vehicle
+    ////////////////////////////////////////////////////////
+    vehicle.is_selected = true;
+    await vehicle.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Vehicle selected successfully",
+      data: vehicle
     });
 
   } catch (error) {
