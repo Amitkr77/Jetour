@@ -60,7 +60,7 @@ exports.sendOtp = async (req, res) => {
         // auto register if not exists
         if (!customer) {
             customer = await Customer.create({
-                contact_number
+                contact_number, country_code
             });
         }
 
