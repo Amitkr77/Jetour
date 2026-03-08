@@ -54,7 +54,6 @@ exports.createCustomerBooking = async (req, res) => {
         country_code: customer.country_code,
         gender: customer.gender,
         address: customer.full_address,
-        id: customer.id
       },
       vehicle: {
         vehicle_id: vehicle._id, // Mongo _id reference
