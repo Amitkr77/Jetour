@@ -16,12 +16,7 @@ exports.getAvailableSlots = async (req, res) => {
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(package_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid package ID"
-      });
-    }
+
 
     const config = await ScheduleConfig.findOne({ is_active: true });
     if (!config) {
@@ -75,15 +70,15 @@ exports.getAvailableSlots = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const packageData = await Package.findById(package_id);
+    const packageData = await Package.findOne({ package_id: package_id });
+
     if (!packageData) {
       return res.status(404).json({
         success: false,
         message: "Package not found"
       });
     }
-
-
+    
     const totalMinutes =
       packageData.worktime +
       config.buffer_between_bookings_minutes;
