@@ -121,7 +121,7 @@ exports.updateCustomerVehicle = async (req, res, next) => {
       const existing = await CustomerVehicle.findOne({
         customer: req.body.user_id,
         registration_number: req.body.registration_number,
-        _id: { $ne: id }
+        vehicle_id: { $ne: id }   // custom id field
       });
 
       if (existing) {
@@ -132,8 +132,17 @@ exports.updateCustomerVehicle = async (req, res, next) => {
       }
     }
 
-    const updated = await CustomerVehicle.findByIdAndUpdate(
-      id,
+    let query = {};
+
+    // ✅ Check if Mongo ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { _id: id };
+    } else {
+      query = { vehicle_id: id };   // your custom id field
+    }
+
+    const updated = await CustomerVehicle.findOneAndUpdate(
+      query,
       req.body,
       { new: true }
     );
