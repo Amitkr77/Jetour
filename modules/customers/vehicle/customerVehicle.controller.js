@@ -177,20 +177,54 @@ exports.deleteCustomerVehicle = async (req, res, next) => {
       });
     }
 
-    //////////////////////////////////////////////////////
-    // 🔥 Delete only if vehicle belongs to that customer
-    //////////////////////////////////////////////////////
-    const deleted = await CustomerVehicle.findOneAndDelete({
-      vehicle_model: vehicle_id,
-      customer: user_id
-    });
+    ////////////////////////////////////////////////////////
+    // 🔎 Find Customer by _id OR custom id
+    ////////////////////////////////////////////////////////
+    let customer;
 
-    if (!deleted) {
+    if (mongoose.Types.ObjectId.isValid(user_id)) {
+      customer = await Customer.findOne({
+        $or: [{ _id: user_id }, { id: user_id }]
+      });
+    } else {
+      customer = await Customer.findOne({ id: user_id });
+    }
+
+    if (!customer) {
       return res.status(404).json({
         success: false,
-        message: "Vehicle not found for this user"
+        message: "Customer not found"
       });
     }
+
+    ////////////////////////////////////////////////////////
+    // 🔎 Find Vehicle by _id OR custom id
+    ////////////////////////////////////////////////////////
+    let vehicle;
+
+    if (mongoose.Types.ObjectId.isValid(vehicle_id)) {
+      vehicle = await CustomerVehicle.findOne({
+        $or: [{ _id: vehicle_id }, { id: vehicle_id }],
+        customer: customer._id
+      });
+    } else {
+      vehicle = await CustomerVehicle.findOne({
+        id: vehicle_id,
+        customer: customer._id
+      });
+    }
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehicle not found for this customer"
+      });
+    }
+
+    ////////////////////////////////////////////////////////
+    // 🗑 Delete vehicle
+    ////////////////////////////////////////////////////////
+    await vehicle.deleteOne();
 
     res.status(200).json({
       success: true,
