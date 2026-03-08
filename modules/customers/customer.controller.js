@@ -223,6 +223,7 @@ exports.getCustomerDashboard = async (req, res, next) => {
         lat: customer.lat,
         lng: customer.lng,
         contact_number: customer.contact_number,
+        country_code: customer.country_code,
         date_of_birth: customer.date_of_birth || null,
         email: customer.email || null,
         civil_id: customer.civil_id || null,
