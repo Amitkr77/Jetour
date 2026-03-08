@@ -9,6 +9,7 @@ const ServiceVan = require("../serviceVan/serviceVan.model");
 const ScheduleConfig = require("../schedule/schedule.model");
 const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
+const vehicleModel = require("../vehicle/vehicle.model")
 const { calculatePackagePrice } = require("../package/package.service");
 
 
@@ -44,6 +45,9 @@ exports.createCustomerBooking = async (req, res) => {
     const service_fee = settings?.service_fee || 0;
     const total_amount = base_price + service_fee;
 
+    const vehicleName = await vehicleModel.findById(vehicle.vehicle_model)
+    console.log(vehicleName);
+
     // 7️⃣ Create booking
     const booking = await Booking.create({
       customer: {
@@ -56,8 +60,8 @@ exports.createCustomerBooking = async (req, res) => {
         address: customer.full_address,
       },
       vehicle: {
-        vehicle_id: vehicle._id, // Mongo _id reference
-        vehicle_model: vehicle.vehicle_model,
+        vehicle_id: vehicle._id,
+        vehicle_model: vehicleName.vehicle_model || null,
         registration_number: vehicle.registration_number || "",
         // model_year: vehicle.model_year || null,
         mileage: vehicle.mileage || 0
@@ -94,91 +98,6 @@ exports.createCustomerBooking = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// exports.createCustomerBooking = async (req, res) => {
-//   try {
-//     const {
-//       customer,
-//       address,
-//       vehicle,
-//       packageId,
-//       booking_date,
-//       booking_time,
-//       payment_method,
-//       additional_notes
-//     } = req.body;
-
-
-//     if (!mongoose.Types.ObjectId.isValid(packageId)) {
-//       return res.status(400).json({ message: `Invalid package ID format: ${packageId}` });
-//     }
-
-//     const servicePackage = await ServicePackage.findById(packageId);
-
-//     if (!servicePackage) {
-//       return res.status(400).json({ message: "Invalid package" });
-//     }
-
-//     // 2. Calculate amount (use your existing logic)
-//     // const amount = servicePackage.price;
-//     if (!mongoose.Types.ObjectId.isValid(vehicle.vehicle_id)) {
-//       return res.status(400).json({ message: "Invalid vehicle ID" });
-//     }
-//     const vehiclPlayload = {
-//       vehicle_id: vehicle.vehicle_id,
-//       mileage: vehicle.mileage
-//     }
-
-//     const base_price = calculatePackagePrice(servicePackage, vehiclPlayload);
-
-//     // Get global settings
-//     const settings = await Settings.findOne({});
-
-//     if (!settings) {
-//       return res.status(500).json({ message: "Settings not configured" });
-//     }
-
-//     const service_fee = settings.service_fee || 0;
-
-//     const total_amount = base_price + service_fee;
-
-//     // 3. Create booking as PENDING
-//     const booking = await Booking.create({
-
-//       created_by: "customer",
-
-//       customer,
-//       address,
-//       vehicle,
-//       package: {
-//         package_id: servicePackage._id,
-//         name: servicePackage.name,
-//         worktime: servicePackage.worktime,
-//         base_price,
-//         service_fee,
-//         total_amount
-//       }, schedule: {
-//         date: booking_date,
-//         start_time: booking_time,
-//         slot_ids: []
-//       },
-//       payment: {
-//         method: payment_method,
-//         status: "pending",
-//       },
-//       status: "pending",
-//       additional_notes
-//     });
-
-//     res.status(201).json({
-//       message: "Booking created. Awaiting payment confirmation.",
-//       booking
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 
 exports.confirmBookingPayment = async (req, res) => {
   const session = await mongoose.startSession();
@@ -375,7 +294,50 @@ exports.confirmBookingPayment = async (req, res) => {
   }
 };
 
+exports.getBookingById = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
 
+    if (!booking_id) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_id is required"
+      });
+    }
+
+    // Validate MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(booking_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID"
+      });
+    }
+
+    const booking = await Booking.findById(booking_id)
+      .populate("assignment.technician", "name phone")
+      .populate("assignment.driver", "name phone")
+      .populate("assignment.service_van", "van_number");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      booking
+    });
+
+  } catch (error) {
+    console.error("Get booking by ID error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
 
 exports.getCustomerBookings = async (req, res) => {
   try {
