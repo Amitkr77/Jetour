@@ -375,54 +375,98 @@ exports.confirmBookingPayment = async (req, res) => {
   }
 };
 
-exports.getBookingsByCustomerId = async (req, res) => {
+// exports.getBookingsByCustomerId = async (req, res) => {
+//   try {
+//     const { customer_id } = req.params;
+
+//     //////////////////////////////////////////////////////
+//     // 🔎 Build query (_id OR custom id)
+//     //////////////////////////////////////////////////////
+//     let query;
+
+//     if (mongoose.Types.ObjectId.isValid(customer_id)) {
+//       query = {
+//         $or: [
+//           { "customer.customer_id": customer_id },
+//           { "customer.id": customer_id }
+//         ]
+//       };
+//     } else {
+//       query = { "customer.id": customer_id };
+//     }
+
+//     //////////////////////////////////////////////////////
+//     // 🔥 Fetch bookings
+//     //////////////////////////////////////////////////////
+//     const bookings = await Booking.find(query)
+//       .sort({ created_at: -1 });
+
+//     //////////////////////////////////////////////////////
+//     // 🔥 Format response
+//     //////////////////////////////////////////////////////
+//     const formattedData = bookings.map((data) => ({
+//       package_name: data.package?.name || null,
+//       price: data?.total_amount || null,
+//       booking_id: data?._id || null,
+//       status: data?.status || null
+//     }));
+
+//     return res.status(200).json({
+//       status: true,
+//       message: "Bookings fetched successfully",
+//       total: formattedData.length,
+//       data: formattedData
+//     });
+
+//   } catch (error) {
+//     console.error("Fetch Booking Error:", error);
+//     return res.status(500).json({
+//       status: false,
+//       message: "Something went wrong"
+//     });
+//   }
+// };
+
+exports.getCustomerBookings = async (req, res) => {
   try {
-    const { customer_id } = req.params;
+    const { contact_number, country_code } = req.params;
 
-    //////////////////////////////////////////////////////
-    // 🔎 Build query (_id OR custom id)
-    //////////////////////////////////////////////////////
-    let query;
-
-    if (mongoose.Types.ObjectId.isValid(customer_id)) {
-      query = {
-        $or: [
-          { "customer.customer_id": customer_id },
-          { "customer.id": customer_id }
-        ]
-      };
-    } else {
-      query = { "customer.id": customer_id };
+    if (!contact_number || !country_code) {
+      return res.status(400).json({
+        success: false,
+        message: "contact_number and country_code are required",
+      });
     }
 
-    //////////////////////////////////////////////////////
-    // 🔥 Fetch bookings
-    //////////////////////////////////////////////////////
-    const bookings = await Booking.find(query)
-      .sort({ created_at: -1 });
+    const bookings = await Booking.find({
+      "customer.phone": contact_number,
+      "customer.country_code": country_code,
+    }).sort({ createdAt: -1 });
 
-    //////////////////////////////////////////////////////
-    // 🔥 Format response
-    //////////////////////////////////////////////////////
+    if (!bookings.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No bookings found for this customer",
+      });
+    }
+
     const formattedData = bookings.map((data) => ({
       package_name: data.package?.name || null,
-      price: data?.total_amount || null,
+      price: data?.package.total_amount || null,
       booking_id: data?._id || null,
       status: data?.status || null
     }));
 
     return res.status(200).json({
-      status: true,
-      message: "Bookings fetched successfully",
-      total: formattedData.length,
-      data: formattedData
+      success: true,
+      count: bookings.length,
+      data: formattedData,
     });
-
   } catch (error) {
-    console.error("Fetch Booking Error:", error);
+    console.error(error);
     return res.status(500).json({
-      status: false,
-      message: "Something went wrong"
+      success: false,
+      message: "Server error",
     });
   }
 };

@@ -5,7 +5,8 @@ const bookingSchema = new mongoose.Schema(
   {
     booking_id: {
       type: String,
-      unique: true
+      unique: true,
+      default: () => "BK" + Date.now()
     },
 
     created_by: {
