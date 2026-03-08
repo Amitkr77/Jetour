@@ -219,20 +219,20 @@ exports.getCustomerDashboard = async (req, res, next) => {
     const response = {
       user: {
         id: customer.id,
-        name: customer.name,
-        location: {
-          lat: customer.lat,
-          lng: customer.lng
-        }
+        name: customer.name || null,
+        lat: customer.lat,
+        lng: customer.lng,
+        contact_number: customer.contact_number,
+        date_of_birth: customer.date_of_birth || null,
+        email: customer.email || null,
+        civil_id: customer.civil_id || null,
+        gender: customer.gender || null,
+        passport_number: customer.passport_number || null,
+        nationality: customer.nationality || null,
+        preferred_language: customer.preferred_language,
+        full_address: customer.full_address || null
       },
 
-      // vehicle: vehicles.length
-      //   ? vehicles.map(v => ({
-      //     name: v.vehicle_model?.vehicle_model || null,
-      //     mileage: v.mileage,
-      //     image: v.image || null
-      //   }))
-      //   : [],
 
       vehicle: formattedVehicles.find(v => v.is_selected) || null,
 
