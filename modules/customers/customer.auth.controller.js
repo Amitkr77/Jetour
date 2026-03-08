@@ -4,99 +4,138 @@ const jwt = require('jsonwebtoken');
 const twilioClient = require('../../utils/twilloClinet');
 
 exports.verifyOtp = async (req, res) => {
-    
-    const { contact_number, otp } = req.body;
+  try {
+    const { contact_number, country_code, otp } = req.body;
 
-    const record = await Otp.findOne({ contact_number });
+    if (!contact_number || !country_code || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "contact_number, country_code, and otp are required"
+      });
+    }
+
+    console.log(contact_number, country_code);
+    
+    //////////////////////////////////////////////////////
+    // 🔎 Find OTP record using contact_number + country_code
+    //////////////////////////////////////////////////////
+    const record = await Otp.findOne({ contact_number, country_code });
 
     if (!record) {
-        return res.status(400).json({
-            success: false,
-            message: "OTP not found"
-        });
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found"
+      });
     }
 
     if (record.expires_at < new Date()) {
-        return res.status(400).json({
-            success: false,
-            message: "OTP expired"
-        });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired"
+      });
     }
 
     if (record.otp !== otp) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid OTP"
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP"
+      });
     }
 
-    const customer = await Customer.findOne({ contact_number });
+    //////////////////////////////////////////////////////
+    // 🔎 Find Customer using contact_number + country_code
+    //////////////////////////////////////////////////////
+    const customer = await Customer.findOne({ contact_number, country_code });
 
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    //////////////////////////////////////////////////////
+    // ⚡ Generate JWT
+    //////////////////////////////////////////////////////
     const token = jwt.sign(
-        { id: customer.id },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+      { id: customer.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
-    await Otp.deleteOne({ contact_number });
-
+    //////////////////////////////////////////////////////
+    // 🗑 Delete used OTP
+    //////////////////////////////////////////////////////
+    await Otp.deleteOne({ contact_number, country_code });
 
     res.status(200).json({
-        success: true,
-        message: "Login successful",
-        token,
-        data: {
-            user_id: customer.id,
-        }
+      success: true,
+      message: "Login successful",
+      token,
+      data: {
+        user_id: customer.id,
+      }
     });
-};
 
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to verify OTP"
+    });
+  }
+};
 
 exports.sendOtp = async (req, res) => {
     try {
         const { contact_number, country_code } = req.body;
 
-        let customer = await Customer.findOne({ contact_number });
+        if (!contact_number || !country_code) {
+            return res.status(400).json({
+                success: false,
+                message: "contact_number and country_code are required"
+            });
+        }
+
+        // Find existing customer
+        let customer = await Customer.findOne({ contact_number, country_code });
 
         // auto register if not exists
         if (!customer) {
-            customer = await Customer.create({
-                contact_number, country_code
-            });
+            customer = await Customer.create({ contact_number, country_code });
         }
 
         // Generate 6 digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-        const expiry = new Date(Date.now() + 5 * 60 * 1000);
-
+        // Save OTP in DB
         await Otp.findOneAndUpdate(
-            { contact_number },
+            { contact_number, country_code },
             { otp, expires_at: expiry },
             { upsert: true, new: true }
         );
 
-        // Format phone number
-        let phone = contact_number.trim();
-        if (!phone.startsWith('+')) {
-            phone = '+91' + phone.replace(/\D/g, '').slice(-10);
-        }
+        // Format phone with country code
+        let phone = contact_number.replace(/\D/g, ''); // remove any non-digit chars
+        let formattedPhone = country_code.startsWith('+')
+            ? country_code + phone
+            : '+' + country_code + phone;
 
         // Send SMS via Twilio
         await twilioClient.messages.create({
             body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
             from: process.env.TWILIO_PHONE_NUMBER,
-            to: phone
+            to: formattedPhone
         });
 
         res.status(200).json({
             success: true,
-            message: `OTP sent successfully to ${phone} is ${otp} for testing purposes`
+            message: `OTP sent successfully to ${formattedPhone} (OTP: ${otp} for testing)`
         });
 
     } catch (error) {
         console.error("OTP send error:", error);
-
         res.status(500).json({
             success: false,
             message: "Failed to send OTP"
