@@ -94,14 +94,18 @@ exports.updateCustomer = async (req, res, next) => {
     let query;
 
     if (mongoose.Types.ObjectId.isValid(id)) {
-      query = { $or: [{ _id: id }, { id: id }] };
+      query = { $or: [{ _id: id }, { id }] };
     } else {
-      query = { id: id };
+      query = { id };
     }
 
-    const customer = await customerService.updateCustomer(
+    //////////////////////////////////////////////////////
+    // ⚡ Use findOneAndUpdate (not findByIdAndUpdate)
+    //////////////////////////////////////////////////////
+    const customer = await Customer.findOneAndUpdate(
       query,
-      req.body
+      req.body,
+      { new: true }  // return the updated document
     );
 
     if (!customer) {
