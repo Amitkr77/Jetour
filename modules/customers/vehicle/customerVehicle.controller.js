@@ -80,12 +80,17 @@ exports.createCustomerVehicle = async (req, res, next) => {
     //////////////////////////////////////////////////////
     // 🔥 Prepare Data (Only Required + Provided Fields)
     //////////////////////////////////////////////////////
+    const vehicleCount = await CustomerVehicle.countDocuments({
+      customer: customer._id
+    });
+
     const vehicleData = {
       customer: customer._id,
       vehicle_model: vehicleModel._id,
       id: vehicleModel.id,
       registration_number,
       mileage,
+      is_selected: vehicleCount === 0,
       ...(vehicleModel.vehicle_image && { image: vehicleModel.vehicle_image })
     };
 
@@ -138,7 +143,7 @@ exports.updateCustomerVehicle = async (req, res, next) => {
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { vehicle_model: id };
     } else {
-      query = { id: id };   // your custom id field
+      query = { id: id };
     }
 
     const updated = await CustomerVehicle.findOneAndUpdate(
@@ -204,7 +209,7 @@ exports.deleteCustomerVehicle = async (req, res, next) => {
 
     if (mongoose.Types.ObjectId.isValid(vehicle_id)) {
       vehicle = await CustomerVehicle.findOne({
-        $or: [{ _id: vehicle_id }, { id: vehicle_id }],
+        $or: [{ vehicle_model: vehicle_id }, { id: vehicle_id }],
         customer: customer._id
       });
     } else {
@@ -218,6 +223,13 @@ exports.deleteCustomerVehicle = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: "Vehicle not found for this customer"
+      });
+    }
+
+    if (vehicle.is_selected) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected vehicle cannot be deleted. Please select another vehicle first."
       });
     }
 
