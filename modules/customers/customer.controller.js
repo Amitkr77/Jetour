@@ -184,11 +184,14 @@ exports.getCustomerDashboard = async (req, res, next) => {
       "customer.customer_id": customer._id
     }).sort({ created_at: -1 });
 
+    console.log(vehicles)
+
     const formattedVehicles = vehicles.map(v => ({
       name: v.vehicle_model?.vehicle_model || null,
       mileage: v.mileage,
       image: v.image || null,
-      is_selected: v.is_selected 
+      is_selected: v.is_selected,
+      id: v.id
     }));
 
     //////////////////////////////////////////////////////
