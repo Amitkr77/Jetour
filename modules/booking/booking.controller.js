@@ -47,12 +47,14 @@ exports.createCustomerBooking = async (req, res) => {
     // 7️⃣ Create booking
     const booking = await Booking.create({
       customer: {
-        customer_id: customer._id, // Mongo _id reference
+        customer_id: customer._id,
         name: customer.name,
         email: customer.email,
         phone: customer.contact_number,
+        country_code: customer.country_code,
         gender: customer.gender,
-        address: customer.full_address
+        address: customer.full_address,
+        id: customer.id
       },
       vehicle: {
         vehicle_id: vehicle._id, // Mongo _id reference
@@ -378,25 +380,43 @@ exports.getBookingsByCustomerId = async (req, res) => {
   try {
     const { customer_id } = req.params;
 
-    // 🔎 Validate customer_id
-    if (!mongoose.Types.ObjectId.isValid(customer_id)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid customer_id"
-      });
+    //////////////////////////////////////////////////////
+    // 🔎 Build query (_id OR custom id)
+    //////////////////////////////////////////////////////
+    let query;
+
+    if (mongoose.Types.ObjectId.isValid(customer_id)) {
+      query = {
+        $or: [
+          { "customer.customer_id": customer_id },
+          { "customer.id": customer_id }
+        ]
+      };
+    } else {
+      query = { "customer.id": customer_id };
     }
 
+    //////////////////////////////////////////////////////
     // 🔥 Fetch bookings
-    const bookings = await Booking.find({
-      "customer.customer_id": customer_id
-    })
-      .sort({ createdAt: -1 }); // Latest first
+    //////////////////////////////////////////////////////
+    const bookings = await Booking.find(query)
+      .sort({ created_at: -1 });
+
+    //////////////////////////////////////////////////////
+    // 🔥 Format response
+    //////////////////////////////////////////////////////
+    const formattedData = bookings.map((data) => ({
+      package_name: data.package?.name || null,
+      price: data?.total_amount || null,
+      booking_id: data?._id || null,
+      status: data?.status || null
+    }));
 
     return res.status(200).json({
       status: true,
       message: "Bookings fetched successfully",
-      total: bookings.length,
-      data: bookings
+      total: formattedData.length,
+      data: formattedData
     });
 
   } catch (error) {
@@ -596,6 +616,81 @@ exports.getBookingDashboard = async (req, res) => {
     res.status(500).json({
       status: false,
       message: "Something went wrong"
+    });
+  }
+};
+
+
+exports.trackBooking = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+
+    const booking = await Booking.findById({ _id: booking_id })
+      .populate("assignment.technician", "name phone")
+      .populate("assignment.driver", "name phone")
+      .populate("assignment.service_van", "van_number");
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
+
+    const timeline = [];
+
+    // 1️⃣ Booking Confirmed
+    timeline.push({
+      step: "Booking Confirmed",
+      completed: booking.status !== "pending",
+      date: booking.createdAt
+    });
+
+    // 2️⃣ Technician Assigned
+    timeline.push({
+      step: "Technician Assigned",
+      completed: !!booking.assignment.technician,
+      date: booking.assignment.assigned_at || null,
+      technician: booking.assignment.technician
+    });
+
+    // 3️⃣ Van On The Way
+    timeline.push({
+      step: "Van On The Way",
+      completed: booking.trip_details.trip_status === "pending",
+      date: booking.trip_details.started_at || null
+    });
+
+    // 4️⃣ Service In Progress
+    timeline.push({
+      step: "Service In Progress",
+      completed: booking.service_progress.status === "in_progress" ||
+        booking.service_progress.status === "completed",
+      date: booking.service_progress.started_at || null
+    });
+
+    // 5️⃣ Service Completed
+    timeline.push({
+      step: "Service Completed",
+      completed: booking.service_progress.status === "completed",
+      date: booking.service_progress.completed_at || null
+    });
+
+    res.json({
+      success: true,
+      booking_id: booking.booking_id,
+      status: booking.status,
+      technician: booking.assignment.technician,
+      driver: booking.assignment.driver,
+      service_van: booking.assignment.service_van,
+      timeline
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
     });
   }
 };

@@ -20,10 +20,12 @@ const bookingSchema = new mongoose.Schema(
         ref: "Customer",
         required: true
       },
+      id: { type: string },
       name: { type: String, },
       email: { type: String },
       gender: { type: String, enum: ["Male", "Female"] },
       phone: { type: String, required: true },
+      country_code: { type: String, required: true }
     },
 
     // ---------------- ADDRESS ----------------
@@ -70,6 +72,48 @@ const bookingSchema = new mongoose.Schema(
       next_service_recommendation: String,
       started_at: Date,
       completed_at: Date
+    },
+
+    // ---------------- TRIP DETAILS ----------------
+    trip_details: {
+      distance: {
+        type: Number,
+        default: 0
+      },
+      duration: {
+        type: Number,
+        default: 0
+      },
+      van_started_at: {
+        type: Date
+      },
+
+      arrived_at: {
+        type: Date
+      },
+      arrival_confirmed: {
+        type: Boolean,
+        default: false
+      },
+      vehicle_parked: {
+        type: Boolean,
+        default: false
+      },
+      technician_started: {
+        type: Boolean,
+        default: false
+      },
+      technician_started_at: {
+        type: Date
+      },
+      notes: {
+        type: String
+      },
+      trip_status: {
+        type: String,
+        enum: ["pending", "on_the_way", "arrived", "completed"],
+        default: "pending"
+      }
     },
 
     // ---------------- PACKAGE SNAPSHOT ----------------
@@ -124,7 +168,9 @@ const bookingSchema = new mongoose.Schema(
         ref: "ServiceVan",
         default: null
       },
-      assigned_at: Date,
+      assigned_at: {
+        type: Date
+      },
       needs_attention: {
         type: Boolean,
         default: false

@@ -14,4 +14,6 @@ router.put(
     bookingController.cancelBooking
 );
 
+router.get("/track-booking/:booking_id", bookingController.trackBooking);
+
 module.exports = router;
