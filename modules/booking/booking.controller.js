@@ -429,7 +429,7 @@ exports.confirmBookingPayment = async (req, res) => {
 
 exports.getCustomerBookings = async (req, res) => {
   try {
-    const { contact_number, country_code } = req.params;
+    const { contact_number, country_code } = req.body;
 
     if (!contact_number || !country_code) {
       return res.status(400).json({

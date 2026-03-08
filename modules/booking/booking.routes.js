@@ -4,7 +4,7 @@ const bookingController = require("../booking/booking.controller");
 
 // Customer booking
 router.post("/customer", bookingController.createCustomerBooking);
-router.get("/customer/:country_code/:contact_number", bookingController.getCustomerBookings);
+router.get("/customer", bookingController.getCustomerBookings);
 router.post("/customer/confirm", bookingController.confirmBookingPayment);
 // router.get("/customer/history/:customer_id", bookingController.getCustomerBookingHistory);
 router.get("/dashboard", bookingController.getBookingDashboard);
