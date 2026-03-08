@@ -5,6 +5,10 @@ const otpSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  country_code: {
+    type: String,
+    required: true
+  },
   otp: {
     type: String,
     required: true
