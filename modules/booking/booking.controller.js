@@ -375,61 +375,13 @@ exports.confirmBookingPayment = async (req, res) => {
   }
 };
 
-// exports.getBookingsByCustomerId = async (req, res) => {
-//   try {
-//     const { customer_id } = req.params;
 
-//     //////////////////////////////////////////////////////
-//     // 🔎 Build query (_id OR custom id)
-//     //////////////////////////////////////////////////////
-//     let query;
-
-//     if (mongoose.Types.ObjectId.isValid(customer_id)) {
-//       query = {
-//         $or: [
-//           { "customer.customer_id": customer_id },
-//           { "customer.id": customer_id }
-//         ]
-//       };
-//     } else {
-//       query = { "customer.id": customer_id };
-//     }
-
-//     //////////////////////////////////////////////////////
-//     // 🔥 Fetch bookings
-//     //////////////////////////////////////////////////////
-//     const bookings = await Booking.find(query)
-//       .sort({ created_at: -1 });
-
-//     //////////////////////////////////////////////////////
-//     // 🔥 Format response
-//     //////////////////////////////////////////////////////
-//     const formattedData = bookings.map((data) => ({
-//       package_name: data.package?.name || null,
-//       price: data?.total_amount || null,
-//       booking_id: data?._id || null,
-//       status: data?.status || null
-//     }));
-
-//     return res.status(200).json({
-//       status: true,
-//       message: "Bookings fetched successfully",
-//       total: formattedData.length,
-//       data: formattedData
-//     });
-
-//   } catch (error) {
-//     console.error("Fetch Booking Error:", error);
-//     return res.status(500).json({
-//       status: false,
-//       message: "Something went wrong"
-//     });
-//   }
-// };
 
 exports.getCustomerBookings = async (req, res) => {
   try {
-    const { contact_number, country_code } = req.body;
+    const { contact_number } = req.query;
+    let country_code = req.query.country_code || '';
+    country_code = country_code.replace(/\s/g, '');
 
     if (!contact_number || !country_code) {
       return res.status(400).json({
