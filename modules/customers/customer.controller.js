@@ -76,6 +76,7 @@ exports.getCustomerDetail = async (req, res, next) => {
 
 exports.updateCustomer = async (req, res, next) => {
   try {
+
     const { error } = validation.updateCustomerSchema.validate(req.body);
     if (error) {
       return res.status(400).json({
@@ -85,8 +86,21 @@ exports.updateCustomer = async (req, res, next) => {
       });
     }
 
+    const id = req.params.id;
+
+    //////////////////////////////////////////////////////
+    // 🔎 Build query for _id OR custom id
+    //////////////////////////////////////////////////////
+    let query;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [{ _id: id }, { id: id }] };
+    } else {
+      query = { id: id };
+    }
+
     const customer = await customerService.updateCustomer(
-      req.params.id,
+      query,
       req.body
     );
 
@@ -103,6 +117,7 @@ exports.updateCustomer = async (req, res, next) => {
       message: "Customer updated successfully",
       data: customer
     });
+
   } catch (err) {
     next(err);
   }
