@@ -10,19 +10,19 @@ const Technician = require("../technician.model");
 // ===============================
 exports.getDashboard = async (req, res) => {
   try {
-    // 🔹 For testing (replace with req.user.id in production)
+    // 🔹 Get technician custom ID
     const technicianId =
-      req.user?.id || req.params.technicianId || req.body.technicianId;
+      req.user?.technicianId || req.params.technicianId || req.body.technicianId;
 
-    if (!mongoose.Types.ObjectId.isValid(technicianId)) {
-      return res.status(400).json({ message: "Invalid technician ID" });
+    if (!technicianId) {
+      return res.status(400).json({ message: "Technician ID is required" });
     }
 
     // ===============================
-    // 1️⃣ Get Technician Name
+    // 1️⃣ Get Technician
     // ===============================
-    const technician = await Technician.findById(technicianId)
-      .select("name rating")
+    const technician = await Technician.findOne({ technician_id: technicianId })
+      .select("name rating technician_id")
       .lean();
 
     if (!technician) {
@@ -30,22 +30,20 @@ exports.getDashboard = async (req, res) => {
     }
 
     // ===============================
-    // 2️⃣ Get Today's Date (since schedule.date is STRING)
+    // 2️⃣ Get Today's Date
     // ===============================
     const today = new Date().toISOString().split("T")[0];
-    // Make sure your schedule.date format matches this (YYYY-MM-DD)
 
     // ===============================
     // 3️⃣ Get Today's Jobs
     // ===============================
     const bookings = await Booking.find({
-      "assignment.technician": technicianId,
+      "assignment.technicianId": technicianId,
       "schedule.date": today
     });
 
-
     // ===============================
-    // 5️⃣ Format Today Jobs
+    // 4️⃣ Format Today Jobs
     // ===============================
     const todayJobs = bookings.map((booking) => ({
       package_name: booking.package?.name || null,
@@ -61,7 +59,7 @@ exports.getDashboard = async (req, res) => {
     }));
 
     // ===============================
-    // 6️⃣ Final Response
+    // 5️⃣ Response
     // ===============================
     res.json({
       success: true,
@@ -269,8 +267,6 @@ exports.getMyJob = async (req, res) => {
     });
   }
 };
-
-
 // ===============================
 // 5️⃣ START JOB
 // ===============================
