@@ -46,7 +46,6 @@ exports.createCustomerBooking = async (req, res) => {
     const total_amount = base_price + service_fee;
 
     const vehicleName = await vehicleModel.findById(vehicle.vehicle_model)
-    console.log(vehicleName);
 
     // 7️⃣ Create booking
     const booking = await Booking.create({

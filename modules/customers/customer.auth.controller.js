@@ -14,7 +14,6 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    console.log(contact_number, country_code);
 
     //////////////////////////////////////////////////////
     // 🔎 Find OTP record using contact_number + country_code

@@ -59,7 +59,6 @@ exports.createServiceVan = [
       }
 
       const image = req.file ? req.file.path : req.body.image;
-      console.log("FILE:", req.file);
 
       // ✅ Create van
       const van = await serviceVanService.createServiceVan({
