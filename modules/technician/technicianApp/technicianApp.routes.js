@@ -11,7 +11,7 @@ const parser = createUploader('booking/serivice');
 // router.use(roleMiddleware("technician"));
 
 router.get("/dashboard/:technicianId", technicianController.getDashboard);
-router.get("/active-job", technicianController.getActiveJob);
+router.get("/active-job/:technicianId", technicianController.getActiveJob);
 router.get("/my-job/:technicianId",technicianController.getMyJob);
 router.get("/upcoming", technicianController.getUpcomingJobs);
 router.get("/history", technicianController.getHistory);

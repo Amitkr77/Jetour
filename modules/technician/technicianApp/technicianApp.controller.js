@@ -38,7 +38,7 @@ exports.getDashboard = async (req, res) => {
     // 3️⃣ Get Today's Jobs
     // ===============================
     const bookings = await Booking.find({
-      "assignment.technicianId": technicianId,
+      "assignment.technicianId": technician._id,
       "schedule.date": today
     });
 
@@ -79,11 +79,21 @@ exports.getDashboard = async (req, res) => {
 // ===============================
 exports.getActiveJob = async (req, res) => {
   try {
-    const technicianId = req.user.id;
+    const technicianId = req.params.technicianId;
+
+    if (!technicianId) {
+      return res.status(400).json({ message: "Technician ID is required" });
+    }
+    console.log(technicianId);
+    
+
+    const technician = await Technician.findOne({ technician_id: technicianId });
+    // const technician = await Technician.findOne({ technician_id: technicianId })
+    console.log(technician);
 
     const job = await Booking.findOne({
-      "assignment.technician": technicianId,
-      status: "in_progress"
+      "assignment.technician": technician._id,
+      "service_progress.status": "in_progress"
     }).populate("package customer assignment.service_van");
 
     res.json(job);
