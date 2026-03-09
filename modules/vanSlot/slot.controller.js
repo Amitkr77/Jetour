@@ -55,8 +55,6 @@ exports.getAvailableSlots = async (req, res) => {
       (d) => d.day === dayName && d.enabled
     );
 
-
-
     if (!isOperating) {
       return res.json({ success: true, data: [] });
     }
@@ -78,7 +76,7 @@ exports.getAvailableSlots = async (req, res) => {
         message: "Package not found"
       });
     }
-    
+
     const totalMinutes =
       packageData.worktime +
       config.buffer_between_bookings_minutes;
@@ -95,7 +93,6 @@ exports.getAvailableSlots = async (req, res) => {
       status: "available",
       is_active: true
     }).sort({ van_id: 1, start_time: 1 });
-
 
 
     if (!allSlots.length) {

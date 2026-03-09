@@ -134,7 +134,7 @@ exports.updatePackage = async (idOrCode, payload) => {
   }
 
   if (!updated) {
-    updated = await Package.findOneAndUpdate({ package_id: idOrCode }, payload, { new: true });
+    updated = await Package.findOneAndUpdate({ package_id: idOrCode }, payload, { returnDocument: "after" });
   }
 
   if (!updated) throw new Error("Package not found");

@@ -26,7 +26,7 @@ exports.updateBufferMinutes = async (bufferMinutes) => {
   return await ScheduleConfig.findOneAndUpdate(
     { is_active: true },
     { buffer_between_bookings_minutes: bufferMinutes },
-    { new: true }
+    { returnDocument: "after" }
   );
 };
 

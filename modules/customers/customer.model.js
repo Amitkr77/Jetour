@@ -59,8 +59,9 @@ const customerSchema = new mongoose.Schema({
   civil_id: {
     type: String,
     trim: true,
-    index: true,
+    // index: true,
     unique: true,
+    sparse: true
   },
 
   gender: {
@@ -72,6 +73,7 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true,
     unique: true,
+    sparse: true
   },
 
   nationality: {

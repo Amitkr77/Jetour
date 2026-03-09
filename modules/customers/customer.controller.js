@@ -105,7 +105,7 @@ exports.updateCustomer = async (req, res, next) => {
     const customer = await Customer.findOneAndUpdate(
       query,
       req.body,
-      { new: true }  // return the updated document
+      { returnDocument: "after" }  // return the updated document
     );
 
     if (!customer) {

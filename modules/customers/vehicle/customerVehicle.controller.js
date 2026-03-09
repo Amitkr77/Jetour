@@ -149,7 +149,7 @@ exports.updateCustomerVehicle = async (req, res, next) => {
     const updated = await CustomerVehicle.findOneAndUpdate(
       query,
       req.body,
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updated) {

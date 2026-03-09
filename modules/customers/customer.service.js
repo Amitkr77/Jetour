@@ -80,7 +80,7 @@ exports.updateCustomer = async (id, data) => {
     ? { $or: [{ _id: id }, { id: id }] }
     : { id: id };
 
-  return Customer.findOneAndUpdate(query, data, { new: true });
+  return Customer.findOneAndUpdate(query, data, {  returnDocument: "after" });
 };
 
 exports.deleteCustomer = async (id) => {

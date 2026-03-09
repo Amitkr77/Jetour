@@ -15,7 +15,7 @@ exports.verifyOtp = async (req, res) => {
     }
 
     console.log(contact_number, country_code);
-    
+
     //////////////////////////////////////////////////////
     // 🔎 Find OTP record using contact_number + country_code
     //////////////////////////////////////////////////////
@@ -87,124 +87,124 @@ exports.verifyOtp = async (req, res) => {
 };
 
 exports.sendOtp = async (req, res) => {
-    try {
-        const { contact_number, country_code } = req.body;
+  try {
+    const { contact_number, country_code } = req.body;
 
-        if (!contact_number || !country_code) {
-            return res.status(400).json({
-                success: false,
-                message: "contact_number and country_code are required"
-            });
-        }
-
-        // Find existing customer
-        let customer = await Customer.findOne({ contact_number, country_code });
-
-        // auto register if not exists
-        if (!customer) {
-            customer = await Customer.create({ contact_number, country_code });
-        }
-
-        // Generate 6 digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-        // Save OTP in DB
-        await Otp.findOneAndUpdate(
-            { contact_number, country_code },
-            { otp, expires_at: expiry },
-            { upsert: true, new: true }
-        );
-
-        // Format phone with country code
-        let phone = contact_number.replace(/\D/g, ''); // remove any non-digit chars
-        let formattedPhone = country_code.startsWith('+')
-            ? country_code + phone
-            : '+' + country_code + phone;
-
-        // Send SMS via Twilio
-        await twilioClient.messages.create({
-            body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: formattedPhone
-        });
-
-        res.status(200).json({
-            success: true,
-            message: `OTP sent successfully to ${formattedPhone} (OTP: ${otp} for testing)`
-        });
-
-    } catch (error) {
-        console.error("OTP send error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to send OTP"
-        });
+    if (!contact_number || !country_code) {
+      return res.status(400).json({
+        success: false,
+        message: "contact_number and country_code are required"
+      });
     }
+
+    // Find existing customer
+    let customer = await Customer.findOne({ contact_number, country_code });
+
+    // auto register if not exists
+    if (!customer) {
+      customer = await Customer.create({ contact_number, country_code });
+    }
+
+    // Generate 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Save OTP in DB
+    await Otp.findOneAndUpdate(
+      { contact_number, country_code },
+      { otp, expires_at: expiry },
+      { upsert: true, returnDocument: "after" }
+    );
+
+    // Format phone with country code
+    let phone = contact_number.replace(/\D/g, ''); // remove any non-digit chars
+    let formattedPhone = country_code.startsWith('+')
+      ? country_code + phone
+      : '+' + country_code + phone;
+
+    // Send SMS via Twilio
+    await twilioClient.messages.create({
+      body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: formattedPhone
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `OTP sent successfully to ${formattedPhone} (OTP: ${otp} for testing)`
+    });
+
+  } catch (error) {
+    console.error("OTP send error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP"
+    });
+  }
 };
 
 exports.resendOtp = async (req, res) => {
-    try {
-        const { contact_number } = req.body;
+  try {
+    const { contact_number } = req.body;
 
-        const customer = await Customer.findOne({ contact_number });
-        if (!customer) {
-            return res.status(404).json({
-                success: false,
-                message: "Customer not found"
-            });
-        }
-
-        const existingOtp = await Otp.findOne({ contact_number });
-
-        if (!existingOtp) {
-            return res.status(400).json({
-                success: false,
-                message: "Please request OTP first"
-            });
-        }
-
-        // ⏳ Cooldown: 60 seconds
-        const cooldown = 60 * 1000;
-        const timeSinceLastOtp = Date.now() - existingOtp.last_sent_at;
-
-        if (timeSinceLastOtp < cooldown) {
-            return res.status(429).json({
-                success: false,
-                message: "Please wait before requesting OTP again"
-            });
-        }
-
-        // 🚫 Max resend limit
-        if (existingOtp.resend_count >= 3) {
-            return res.status(429).json({
-                success: false,
-                message: "Maximum OTP resend attempts reached"
-            });
-        }
-
-        // 🔢 Generate new OTP
-        const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        existingOtp.otp = newOtp;
-        existingOtp.expires_at = new Date(Date.now() + 5 * 60 * 1000);
-        existingOtp.resend_count += 1;
-        existingOtp.last_sent_at = new Date();
-
-        await existingOtp.save();
-
-        // TODO: Send SMS here
-
-        res.status(200).json({
-            success: true,
-            message: `OTP resent to ${contact_number} is ${newOtp} for testing purposes`
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: "Something went wrong"
-        });
+    const customer = await Customer.findOne({ contact_number });
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
     }
+
+    const existingOtp = await Otp.findOne({ contact_number });
+
+    if (!existingOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Please request OTP first"
+      });
+    }
+
+    // ⏳ Cooldown: 60 seconds
+    const cooldown = 60 * 1000;
+    const timeSinceLastOtp = Date.now() - existingOtp.last_sent_at;
+
+    if (timeSinceLastOtp < cooldown) {
+      return res.status(429).json({
+        success: false,
+        message: "Please wait before requesting OTP again"
+      });
+    }
+
+    // 🚫 Max resend limit
+    if (existingOtp.resend_count >= 3) {
+      return res.status(429).json({
+        success: false,
+        message: "Maximum OTP resend attempts reached"
+      });
+    }
+
+    // 🔢 Generate new OTP
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    existingOtp.otp = newOtp;
+    existingOtp.expires_at = new Date(Date.now() + 5 * 60 * 1000);
+    existingOtp.resend_count += 1;
+    existingOtp.last_sent_at = new Date();
+
+    await existingOtp.save();
+
+    // TODO: Send SMS here
+
+    res.status(200).json({
+      success: true,
+      message: `OTP resent to ${contact_number} is ${newOtp} for testing purposes`
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong"
+    });
+  }
 };
