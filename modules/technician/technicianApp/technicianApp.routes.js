@@ -13,7 +13,7 @@ const parser = createUploader('booking/serivice');
 router.get("/dashboard/:technicianId", technicianController.getDashboard);
 router.get("/active-job/:technicianId", technicianController.getActiveJob);
 router.get("/my-job/:technicianId",technicianController.getMyJob);
-router.get("/upcoming", technicianController.getUpcomingJobs);
+router.get("/upcoming-jobs/:technicianId", technicianController.getUpcomingJobs);
 router.get("/history", technicianController.getHistory);
 
 router.get("/job/:bookingId", technicianController.getJobDetail);

@@ -2,8 +2,6 @@ const Booking = require("../../booking/booking.model");
 const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
-// const createUploader = require('../../../utils/uploadImage');
-// const parser = createUploader('booking/serivice');
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -84,12 +82,8 @@ exports.getActiveJob = async (req, res) => {
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
     }
-    console.log(technicianId);
-    
 
     const technician = await Technician.findOne({ technician_id: technicianId });
-    // const technician = await Technician.findOne({ technician_id: technicianId })
-    console.log(technician);
 
     const job = await Booking.findOne({
       "assignment.technician": technician._id,
@@ -103,27 +97,55 @@ exports.getActiveJob = async (req, res) => {
   }
 };
 
-
 // ===============================
 // 3️⃣ UPCOMING JOBS
 // ===============================
 exports.getUpcomingJobs = async (req, res) => {
   try {
-    const technicianId = req.user.id;
+    const { technicianId } = req.params;
 
+    if (!technicianId) {
+      return res.status(400).json({
+        success: false,
+        message: "Technician ID is required"
+      });
+    }
+
+    // 🔍 Find technician by custom ID
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
+    if (!technician) {
+      return res.status(404).json({
+        success: false,
+        message: "Technician not found"
+      });
+    }
+
+    // 📅 Get today's start time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 🔍 Fetch upcoming jobs
     const jobs = await Booking.find({
-      "assignment.technician": technicianId,
+      "assignment.technician": technician._id,
       status: "confirmed",
-      "schedule.date": { $gte: new Date() }
-    }).sort({ "schedule.date": 1, "schedule.start_time": 1 });
+      "schedule.date": { $gte: today }
+    })
+      .sort({ "schedule.date": 1, "schedule.start_time": 1 });
 
-    res.json(jobs);
+    return res.status(200).json({
+      success: true,
+      message: "Upcoming jobs fetched successfully",
+      data: jobs
+    });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
-
 
 // ===============================
 // 4️⃣ JOB DETAIL
@@ -131,7 +153,14 @@ exports.getUpcomingJobs = async (req, res) => {
 exports.getJobDetail = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId = req.user?.id || req.body.technicianId;
+    const technicianId = req.body.technicianId;
+
+    if (!technicianId) {
+      return res.status(400).json({ message: "Technician ID is required" });
+    }
+
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
 
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return res.status(400).json({
@@ -153,7 +182,7 @@ exports.getJobDetail = async (req, res) => {
     }
 
     if (!booking.assignment?.technician ||
-      booking.assignment.technician.toString() !== technicianId) {
+      booking.assignment.technician.toString() !== technician._id) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized"
@@ -218,22 +247,20 @@ exports.getJobDetail = async (req, res) => {
 
 exports.getMyJob = async (req, res) => {
   try {
-    // 🔹 For testing (replace with req.user.id in production)
-    const technicianId =
-      req.user?.id || req.params.technicianId || req.body.technicianId;
+    const technicianId = req.params.technicianId;
 
-    if (!mongoose.Types.ObjectId.isValid(technicianId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid technician ID"
-      });
+    if (!technicianId) {
+      return res.status(400).json({ message: "Technician ID is required" });
     }
+
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
 
     // ===============================
     // 1️⃣ Fetch Jobs (assigned to technician)
     // ===============================
     const bookings = await Booking.find({
-      "assignment.technician": technicianId,
+      "assignment.technician": technician._id,
       status: { $in: ["confirmed", "in-progress"] }
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
@@ -255,7 +282,7 @@ exports.getMyJob = async (req, res) => {
       booking_id: booking.booking_id || booking._id,
       customer_details: {
         name: booking.customer?.name || null,
-        country_code: "+965", // Static (change if stored dynamically)
+        country_code: booking.customer?.country_code, 
         contact: booking.customer?.phone || null
       }
     }));
@@ -285,12 +312,19 @@ exports.startJob = async (req, res) => {
     const { bookingId } = req.params;
     const technicianId = req.body.technicianId;
 
+
+    if (!technicianId) {
+      return res.status(400).json({ message: "Technician ID is required" });
+    }
+
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
     const booking = await Booking.findById(bookingId);
 
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technicianId)
+    if (booking.assignment.technician.toString() !== technician._id)
       return res.status(403).json({ message: "Unauthorized" });
 
     // booking.status = "in_progress";
