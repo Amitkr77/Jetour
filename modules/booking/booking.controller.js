@@ -11,7 +11,8 @@ const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
 const vehicleModel = require("../vehicle/vehicle.model")
 const { calculatePackagePrice } = require("../package/package.service");
-
+const Driver = require("../driver/driver.model");
+const Technician = require("../technician/technician.model");
 
 exports.createCustomerBooking = async (req, res) => {
   try {
@@ -647,6 +648,71 @@ exports.trackBooking = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error"
+    });
+  }
+};
+
+
+exports.updateBookingAssignment = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+    const { driver_id, technician_id } = req.body;
+
+    console.log(driver_id);
+
+
+    const booking = await Booking.findById(booking_id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
+
+    // 🔹 Find driver using custom ID
+    if (driver_id) {
+      const driver = await Driver.findOne({ driver_id: driver_id });
+
+      if (!driver) {
+        return res.status(404).json({
+          success: false,
+          message: "Driver not found"
+        });
+      }
+
+      booking.assignment.driver = driver._id;
+    }
+
+    // 🔹 Find technician using custom ID
+    if (technician_id) {
+      const technician = await Technician.findOne({ technician_id: technician_id });
+
+      if (!technician) {
+        return res.status(404).json({
+          success: false,
+          message: "Technician not found"
+        });
+      }
+
+      booking.assignment.technician = technician._id;
+    }
+
+    booking.assignment.assigned_at = new Date();
+    booking.assignment.needs_attention = false;
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: "Assignment updated successfully",
+      booking
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };

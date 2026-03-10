@@ -14,6 +14,10 @@ router.put(
     "/admin/cancel/:booking_id",
     bookingController.cancelBooking
 );
+router.patch(
+    "/update-assignment/:booking_id",
+    bookingController.updateBookingAssignment
+);
 
 router.get("/track-booking/:booking_id", bookingController.trackBooking);
 
