@@ -39,7 +39,6 @@ const serviceVanSchema = new mongoose.Schema(
 
     last_service_date: {
       type: Date,
-      required: true
     },
 
     // 🔹 Image

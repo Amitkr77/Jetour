@@ -6,7 +6,7 @@ exports.createServiceVanSchema = Joi.object({
   registration_number: Joi.string().required(),
   vehicle_model: Joi.string().required(),
   mileage: Joi.number().required(),
-  last_service_date: Joi.date().required(),
+  last_service_date: Joi.date(),
   status: Joi.string().valid('active', 'inactive', 'under_maintenance').optional(),
   image: Joi.any()
 });
