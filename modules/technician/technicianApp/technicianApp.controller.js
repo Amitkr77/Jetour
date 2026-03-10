@@ -161,7 +161,6 @@ exports.getJobDetail = async (req, res) => {
 
     const technician = await Technician.findOne({ technician_id: technicianId });
 
-
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return res.status(400).json({
         success: false,
@@ -182,7 +181,7 @@ exports.getJobDetail = async (req, res) => {
     }
 
     if (!booking.assignment?.technician ||
-      booking.assignment.technician.toString() !== technician._id) {
+      booking.assignment.technician.toString() !== technician._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized"
@@ -209,7 +208,7 @@ exports.getJobDetail = async (req, res) => {
       status_code: 200,
       data: {
         job_info: {
-          booking_id: booking.booking_id || booking._id,
+          booking_id: booking._id,
           booking_time: booking.schedule?.start_time || null,
           package_info: {
             work_time: booking.package?.worktime
@@ -279,10 +278,10 @@ exports.getMyJob = async (req, res) => {
             ? "scheduled"
             : booking.status,
       booking_time: booking.schedule?.start_time || null,
-      booking_id: booking.booking_id || booking._id,
+      booking_id: booking._id,
       customer_details: {
         name: booking.customer?.name || null,
-        country_code: booking.customer?.country_code, 
+        country_code: booking.customer?.country_code,
         contact: booking.customer?.phone || null
       }
     }));

@@ -63,6 +63,16 @@ const technicianSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    availability: {
+      type: String,
+      enum: ["available", "busy", "on_leave"],
+      default: "available"
+    },
+    assigned_van: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ServiceVan",
+      default: null
+    }
   },
   {
     timestamps: {

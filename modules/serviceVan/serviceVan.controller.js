@@ -195,7 +195,7 @@ exports.deleteServiceVan = async (req, res, next) => {
       });
     }
 
-    const van = await serviceVanService.deleteServiceVan(req.params.id);
+    const van = await ServiceVan.findById(req.params.id);
 
     if (!van) {
       return res.status(404).json({
@@ -205,11 +205,31 @@ exports.deleteServiceVan = async (req, res, next) => {
       });
     }
 
+    // 🔹 Remove driver assignment
+    if (van.driver) {
+      await Driver.findByIdAndUpdate(van.driver, {
+        assigned_van: null,
+        availability: "available"
+      });
+    }
+
+    // 🔹 Remove technician assignment
+    if (van.technician) {
+      await Technician.findByIdAndUpdate(van.technician, {
+        assigned_van: null,
+        availability: "available"
+      });
+    }
+
+    // 🔹 Delete the van
+    await ServiceVan.findByIdAndDelete(req.params.id);
+
     return res.status(200).json({
       success: true,
       message: 'Service van deleted successfully',
       data: null
     });
+
   } catch (err) {
     next(err);
   }
