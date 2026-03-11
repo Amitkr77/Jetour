@@ -273,8 +273,8 @@ exports.getMyJob = async (req, res) => {
       package_name: booking.package?.name || null,
       vehicle_name: booking.vehicle?.vehicle_model || null,
       status:
-        booking.service_progress.status === "in_progress"
-          ? "active"
+        booking.service_progress?.status === "in_progress"
+          ? "in_progress"
           : booking.status === "confirmed"
             ? "scheduled"
             : booking.status,
@@ -287,7 +287,7 @@ exports.getMyJob = async (req, res) => {
         contact: booking.customer?.phone || null
       }
     }));
-    
+
     // ===============================
     // 3️⃣ Final Response
     // ===============================
