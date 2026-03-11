@@ -450,18 +450,16 @@ exports.saveSummary = async (req, res) => {
 // ===============================
 exports.completeJob = async (req, res) => {
   try {
-    const { bookingId } = req.params;
-    const technicianId = req.user.id;
+    const { bookingId, technicianId } = req.params;
 
     const technician = await Technician.findOne({ technician_id: technicianId });
-
 
     const booking = await Booking.findById(bookingId);
 
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technician._id)
+    if (booking.assignment.technician.toString() !== technician._id.toString())
       return res.status(403).json({ message: "Unauthorized" });
 
     // const sp = booking.service_progress;
@@ -471,7 +469,7 @@ exports.completeJob = async (req, res) => {
     //   !sp.checklist_completed ||
     //   !sp.inventory_updated ||
     //   sp.before_photos.length === 0 ||
-    //   sp.after_photos.length === 0
+    //   sp.after_photos.length === 0                     
     // ) {
     //   return res.status(400).json({
     //     message: "All checklist steps must be completed before finishing job"
@@ -491,7 +489,13 @@ exports.completeJob = async (req, res) => {
 
     await booking.save();
 
-    res.json({ message: "Job completed successfully", booking });
+    res.json({
+      success: true,
+      message: "Job completed successfully", booking: {
+        Service_progress: booking.service_progress,
+        booking_status: booking.status
+      }
+    });
 
   } catch (err) {
     res.status(500).json({ message: err.message });

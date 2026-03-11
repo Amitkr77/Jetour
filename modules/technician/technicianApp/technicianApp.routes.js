@@ -22,6 +22,6 @@ router.patch("/start/:bookingId", technicianController.startJob);
 router.patch("/checklist/:bookingId", technicianController.updateChecklist);
 router.post("/upload-photos/:bookingId", technicianController.uploadPhotos);
 router.patch("/summary/:bookingId", technicianController.saveSummary);
-router.patch("/complete/:bookingId", technicianController.completeJob);
+router.patch("/complete/:bookingId/:technicianId", technicianController.completeJob);
 
 module.exports = router;
