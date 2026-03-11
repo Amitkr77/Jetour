@@ -2,6 +2,7 @@ const Booking = require("../../booking/booking.model");
 const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
+const { schedule } = require("node-cron");
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -262,7 +263,7 @@ exports.getMyJob = async (req, res) => {
       "assignment.technician": technician._id,
       status: { $in: ["confirmed", "in-progress"] }
     })
-      .sort({ "sched9ule.date": 1, "schedule.start_time": 1 })
+      .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
 
     // ===============================
@@ -278,6 +279,7 @@ exports.getMyJob = async (req, res) => {
             ? "scheduled"
             : booking.status,
       booking_time: booking.schedule?.start_time || null,
+      booking_date: booking.schedule.date,
       booking_id: booking._id,
       customer_details: {
         name: booking.customer?.name || null,
