@@ -334,7 +334,7 @@ exports.startJob = async (req, res) => {
 
     await booking.save();
 
-    res.json({ message: "Job started", booking });
+    res.json({ success: true, message: "Job started", booking });
 
   } catch (err) {
     res.status(500).json({ message: err.message });
