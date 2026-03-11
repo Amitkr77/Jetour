@@ -325,7 +325,7 @@ exports.startJob = async (req, res) => {
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technician._id)
+    if (booking.assignment.technician.toString() !== technician._id.toString())
       return res.status(403).json({ message: "Unauthorized" });
 
     // booking.status = "in_progress";
