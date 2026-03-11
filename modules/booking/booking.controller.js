@@ -532,6 +532,49 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
+exports.getAllBookings = async (req, res) => {
+  try {
+    // Optional: Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Optional: Filter by status (query param)
+    const filter = {};
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    // Fetch bookings from DB
+    const bookings = await Booking.find(filter)
+      .populate("assignment.technician", "name phone")
+      .populate("assignment.driver", "name phone")
+      .populate("assignment.service_van", "van_number")
+      .sort({ createdAt: -1 }) // latest first
+      .skip(skip)
+      .limit(limit)
+      .lean(); // return plain JS objects
+
+    // Optional: total count for pagination
+    const total = await Booking.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      page,
+      limit,
+      total,
+      bookings
+    });
+
+  } catch (error) {
+    console.error("Get all bookings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
 exports.getCustomerBookings = async (req, res) => {
   try {
     const { contact_number } = req.query;
