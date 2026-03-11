@@ -101,7 +101,7 @@ exports.createAdminBooking = async (req, res) => {
         registration_number: vehicle.registration_number,
         mileage: vehicle.mileage,
         category: vehicleDoc.vehicle_category,
-        id:vehicleDoc.id
+        id: vehicleDoc.id
 
       }], { session });
 
@@ -690,7 +690,7 @@ exports.getBookingDashboard = async (req, res) => {
 
     const in_progress = await Booking.countDocuments({
       ...todayFilter,
-      status: "in-progress"
+      "service_progress.status": "in_progress"
     });
 
     // ===============================
@@ -789,6 +789,7 @@ exports.getBookingDashboard = async (req, res) => {
     // ===============================
     // FINAL RESPONSE
     // ===============================
+
     res.status(200).json({
       status: true,
       message: "Dashboard details retrieved successfully",
