@@ -153,8 +153,7 @@ exports.getUpcomingJobs = async (req, res) => {
 // ===============================
 exports.getJobDetail = async (req, res) => {
   try {
-    const { bookingId } = req.params;
-    const technicianId = req.body.technicianId;
+    const { bookingId, technicianId } = req.params;
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -206,7 +205,6 @@ exports.getJobDetail = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Job details fetched successfully",
-      status_code: 200,
       data: {
         job_info: {
           booking_id: booking._id,
@@ -455,31 +453,41 @@ exports.completeJob = async (req, res) => {
     const { bookingId } = req.params;
     const technicianId = req.user.id;
 
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
+
     const booking = await Booking.findById(bookingId);
 
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.assignment.technician.toString() !== technicianId)
+    if (booking.assignment.technician.toString() !== technician._id)
       return res.status(403).json({ message: "Unauthorized" });
 
-    const sp = booking.service_progress;
+    // const sp = booking.service_progress;
 
-    if (
-      !sp.pre_inspection ||
-      !sp.checklist_completed ||
-      !sp.inventory_updated ||
-      sp.before_photos.length === 0 ||
-      sp.after_photos.length === 0
-    ) {
-      return res.status(400).json({
-        message: "All checklist steps must be completed before finishing job"
-      });
-    }
+    // if (
+    //   !sp.pre_inspection ||
+    //   !sp.checklist_completed ||
+    //   !sp.inventory_updated ||
+    //   sp.before_photos.length === 0 ||
+    //   sp.after_photos.length === 0
+    // ) {
+    //   return res.status(400).json({
+    //     message: "All checklist steps must be completed before finishing job"
+    //   });
+    // }
 
-    sp.status = "completed";
-    sp.completed_at = new Date();
-    booking.status = "awaiting_driver_confirmation";
+
+    booking.service_progress.summary = req.body.summary;
+    booking.service_progress.next_service_recommendation =
+      req.body.next_service_recommendation;
+
+    // sp.status = "completed";
+    // sp.completed_at = new Date();
+    booking.service_progress.status = "completed";
+    booking.service_progress.completed_at = new Date();
+    booking.status = "completed";
 
     await booking.save();
 
