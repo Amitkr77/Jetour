@@ -261,7 +261,7 @@ exports.getMyJob = async (req, res) => {
     // ===============================
     const bookings = await Booking.find({
       "assignment.technician": technician._id,
-      status: { $in: ["confirmed", "in-progress"] }
+      status: { $in: ["confirmed"] }
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
@@ -273,7 +273,7 @@ exports.getMyJob = async (req, res) => {
       package_name: booking.package?.name || null,
       vehicle_name: booking.vehicle?.vehicle_model || null,
       status:
-        booking.status === "in-progress"
+        booking.service_progress.status === "in_progress"
           ? "active"
           : booking.status === "confirmed"
             ? "scheduled"
@@ -287,7 +287,7 @@ exports.getMyJob = async (req, res) => {
         contact: booking.customer?.phone || null
       }
     }));
-
+    
     // ===============================
     // 3️⃣ Final Response
     // ===============================
