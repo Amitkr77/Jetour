@@ -98,48 +98,79 @@ exports.getPackageByIdOrCode = async (idOrCode) => {
 
 exports.updatePackage = async (idOrCode, payload) => {
 
+  let pkg;
+
+  if (mongoose.Types.ObjectId.isValid(idOrCode)) {
+    pkg = await Package.findById(idOrCode);
+  }
+
+  if (!pkg) {
+    pkg = await Package.findOne({ package_id: idOrCode });
+  }
+
+  if (!pkg) throw new Error("Package not found");
+
   if (payload.pricing) {
     for (const row of payload.pricing) {
+
       const vehicleSet = new Set();
 
       for (const v of row.vehicles) {
-        // Resolve custom vehicle ID to _id
+
         let vehicleDoc;
+
+        // Resolve custom vehicle ID
         if (v.vehicle_Id && typeof v.vehicle_Id === "string" && !mongoose.Types.ObjectId.isValid(v.vehicle_Id)) {
           vehicleDoc = await VehicleModel.findOne({ id: v.vehicle_Id });
-          if (!vehicleDoc) throw new Error(`Vehicle with custom id ${v.vehicle_Id} not found`);
+          if (!vehicleDoc) throw new Error(`Vehicle ${v.vehicle_Id} not found`);
           v.vehicle_Id = vehicleDoc._id;
         } else if (v.vehicle_Id) {
           vehicleDoc = await VehicleModel.findById(v.vehicle_Id);
           if (!vehicleDoc) throw new Error("Vehicle not found");
         }
 
-        // Always set vehicle_model from the vehicle document
         if (vehicleDoc) v.vehicle_model = vehicleDoc.vehicle_model;
 
-        // Duplicate check in same row
-        const key = v.vehicle_Id?.toString() || v.vehicle_model;
+        const key = v.vehicle_Id?.toString();
         if (vehicleSet.has(key)) {
           throw new Error("Duplicate vehicle in same mileage row");
         }
         vehicleSet.add(key);
       }
+
+      // 🔹 Check if mileage already exists
+      const existingMileage = pkg.pricing.find(p => p.mileage === row.mileage);
+
+      if (existingMileage) {
+
+        // Update vehicles
+        for (const vehicle of row.vehicles) {
+
+          const existingVehicle = existingMileage.vehicles.find(
+            v => v.vehicle_Id.toString() === vehicle.vehicle_Id.toString()
+          );
+
+          if (existingVehicle) {
+            // update price
+            existingVehicle.price = vehicle.price;
+          } else {
+            // add new vehicle
+            existingMileage.vehicles.push(vehicle);
+          }
+
+        }
+
+      } else {
+        // Add new mileage row
+        pkg.pricing.push(row);
+      }
+
     }
   }
 
-  // 🔹 Fetch package by _id or package_id
-  let updated;
-  if (mongoose.Types.ObjectId.isValid(idOrCode)) {
-    updated = await Package.findByIdAndUpdate(idOrCode, payload, { new: true });
-  }
+  await pkg.save();
 
-  if (!updated) {
-    updated = await Package.findOneAndUpdate({ package_id: idOrCode }, payload, { returnDocument: "after" });
-  }
-
-  if (!updated) throw new Error("Package not found");
-
-  return updated;
+  return pkg;
 };
 
 exports.changeStatus = async (id, status) => {

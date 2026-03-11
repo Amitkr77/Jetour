@@ -4,6 +4,7 @@ const bookingController = require("../booking/booking.controller");
 
 // Customer booking
 router.post("/customer", bookingController.createCustomerBooking);
+router.post("/admin", bookingController.createAdminBooking);
 router.get("/customer", bookingController.getCustomerBookings);
 router.get("/:booking_id", bookingController.getBookingById);
 router.post("/customer/confirm", bookingController.confirmBookingPayment);

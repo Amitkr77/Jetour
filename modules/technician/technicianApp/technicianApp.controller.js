@@ -36,7 +36,7 @@ exports.getDashboard = async (req, res) => {
     // 3️⃣ Get Today's Jobs
     // ===============================
     const bookings = await Booking.find({
-      "assignment.technicianId": technician._id,
+      "assignment.technician": technician._id,
       "schedule.date": today
     });
 
@@ -48,7 +48,7 @@ exports.getDashboard = async (req, res) => {
       customer_name: booking.customer?.name || null,
       vehicle_name: booking.vehicle?.vehicle_model || null,
       status:
-        booking.status === "in-progress"
+        booking.service_progress.status === "in-progress"
           ? "active"
           : booking.status === "confirmed"
             ? "scheduled"
@@ -262,7 +262,7 @@ exports.getMyJob = async (req, res) => {
       "assignment.technician": technician._id,
       status: { $in: ["confirmed", "in-progress"] }
     })
-      .sort({ "schedule.date": 1, "schedule.start_time": 1 })
+      .sort({ "sched9ule.date": 1, "schedule.start_time": 1 })
       .lean();
 
     // ===============================

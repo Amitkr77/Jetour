@@ -9,7 +9,7 @@ router.get("/", controller.getAll);
 
 router.get("/:id", controller.getOne);
 
-router.put(
+router.patch(
     "/:id", controller.update);
 
 router.patch(

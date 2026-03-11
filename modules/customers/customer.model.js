@@ -15,12 +15,6 @@ const addressSchema = new mongoose.Schema({
 
 }, { _id: false });
 
-// const vehicleSchema = new mongoose.Schema({
-//   vehicle_model: { type: String, trim: true },
-//   registration_number: { type: String, trim: true },
-//   model_year: { type: Number },
-//   mileage: { type: Number }
-// }, { _id: false });
 
 const customerSchema = new mongoose.Schema({
   id: {
@@ -101,7 +95,7 @@ const customerSchema = new mongoose.Schema({
     // required: true,
     select: false
   },
-  // vehicle: vehicleSchema,
+  
 
   full_address: addressSchema,
 
