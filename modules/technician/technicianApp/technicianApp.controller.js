@@ -209,6 +209,12 @@ exports.getJobDetail = async (req, res) => {
         job_info: {
           booking_id: booking._id,
           booking_time: booking.schedule?.start_time || null,
+          status:
+            booking.service_progress?.status === "in_progress"
+              ? "in_progress"
+              : booking.status === "confirmed"
+                ? "scheduled"
+                : booking.status,
           package_info: {
             work_time: booking.package?.worktime
               ? `${booking.package.worktime} hours`
@@ -259,7 +265,7 @@ exports.getMyJob = async (req, res) => {
     // ===============================
     const bookings = await Booking.find({
       "assignment.technician": technician._id,
-      status: { $in: ["confirmed"] }
+      status: { $in: ["confirmed", "completed"] }
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
@@ -285,6 +291,15 @@ exports.getMyJob = async (req, res) => {
         contact: booking.customer?.phone || null
       }
     }));
+
+    console.log(bookings[0].service_progress?.status);
+    console.log(bookings[1].service_progress?.status);
+    console.log(bookings[2].service_progress?.status);
+    console.log(bookings[3].service_progress?.status);
+    console.log(bookings[4].service_progress?.status);
+    // console.log(bookings[5].service_progress?.status);
+
+
 
     // ===============================
     // 3️⃣ Final Response
@@ -415,34 +430,6 @@ exports.uploadPhotos = async (req, res) => {
 };
 
 
-// ===============================
-// 8️⃣ SAVE SUMMARY
-// ===============================
-exports.saveSummary = async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    const technicianId = req.user.id;
-
-    const booking = await Booking.findById(bookingId);
-
-    if (!booking)
-      return res.status(404).json({ message: "Booking not found" });
-
-    if (booking.assignment.technician.toString() !== technicianId)
-      return res.status(403).json({ message: "Unauthorized" });
-
-    booking.service_progress.summary = req.body.summary;
-    booking.service_progress.next_service_recommendation =
-      req.body.next_service_recommendation;
-
-    await booking.save();
-
-    res.json({ message: "Summary saved" });
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
 
 
 // ===============================
