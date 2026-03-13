@@ -177,7 +177,11 @@ exports.createAdminBooking = async (req, res) => {
         slot_ids: []
       },
 
-      status: "pending",
+      status: booking_status || "pending",
+      payment: {
+        method: payment_method || "COD",
+        status: payment_status || "pending"
+      },
 
       additional_notes
 
@@ -550,10 +554,10 @@ exports.getAllBookings = async (req, res) => {
       .populate("assignment.technician", "name phone")
       .populate("assignment.driver", "name phone")
       .populate("assignment.service_van", "van_number")
-      .sort({ createdAt: -1 }) // latest first
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .lean(); // return plain JS objects
+      .lean();
 
     // Optional: total count for pagination
     const total = await Booking.countDocuments(filter);
@@ -581,18 +585,22 @@ exports.getBookingByFilter = async (req, res) => {
 
     const filter = {};
 
+    // Status filter
     if (status) {
       filter.status = status;
     }
 
+    // Customer name filter (case-insensitive)
     if (name) {
       filter["customer.name"] = { $regex: name, $options: "i" };
     }
 
+    // Customer contact filter (case-insensitive)
     if (contact) {
       filter["customer.phone"] = { $regex: contact, $options: "i" };
     }
 
+    // Date range filter
     if (from_date || to_date) {
       filter.createdAt = {};
 
@@ -607,17 +615,24 @@ exports.getBookingByFilter = async (req, res) => {
       }
     }
 
-    const bookings = await Booking.find(filter)
-      .populate("assignment.technician", "name phone")
-      .populate("assignment.driver", "name phone")
-      .populate("assignment.service_van", "vehicle_model")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .lean();
+    // Run both queries in parallel for performance
+    const [bookings, total] = await Promise.all([
+      Booking.find(filter)
+        .populate("assignment.technician", "name phone")
+        .populate("assignment.driver", "name phone")
+        .populate("assignment.service_van", "vehicle_model")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(Number(limit))
+        .lean(),
+      Booking.countDocuments(filter)
+    ]);
 
     return res.status(200).json({
       success: true,
+      page: Number(page),
+      limit: Number(limit),
+      total,
       bookings
     });
 
