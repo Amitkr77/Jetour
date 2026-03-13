@@ -39,13 +39,11 @@ exports.getAllCustomers = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Customers fetched successfully",
+      total: result.total,
+      page: result.page,
+      limit: result.per_page,
+      total_pages: Math.ceil(result.total / result.per_page),
       data: result.data,
-      meta: {
-        total: result.total,
-        page: result.page,
-        per_page: result.per_page,
-        total_pages: Math.ceil(result.total / result.per_page)
-      }
     });
   } catch (err) {
     next(err);
