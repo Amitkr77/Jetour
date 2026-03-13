@@ -94,6 +94,9 @@ exports.createAdminBooking = async (req, res) => {
       lng: dbCustomer.lng
     };
 
+    const paymentMethod = (payment_method || "COD").toUpperCase();
+    const paymentStatus = paymentMethod === "COD" ? "pending" : "paid";
+
     // 6️⃣ Create booking (status pending)
     let booking = (await Booking.create([{
       created_by: "admin",
@@ -125,7 +128,10 @@ exports.createAdminBooking = async (req, res) => {
         start_time: schedule.start_time,
         slot_ids: []
       },
-      payment: { method: payment_method || "COD" },
+      payment: {
+        method: paymentMethod,
+        status: paymentStatus
+      },
       status: "pending",
       additional_notes
     }], { session }))[0];
@@ -169,7 +175,7 @@ exports.createAdminBooking = async (req, res) => {
 
     if (!selectedVan) {
       booking.status = "pending_manual_assignment";
-      booking.payment.status = "paid";
+      // booking.payment.status = "paid";
       await booking.save({ session });
     } else {
       // Lock slots
@@ -199,12 +205,11 @@ exports.createAdminBooking = async (req, res) => {
         started_at: null,
         completed_at: null
       };
-      booking.payment.status = "paid";
       booking.status = "confirmed";
 
-      if (needsAttention) {
-        await Notification.create([{ title: "Booking needs driver/technician assignment", booking: booking._id, role: "admin" }], { session });
-      }
+      // if (needsAttention) {
+      //   await Notification.create([{ title: "Booking needs driver/technician assignment", booking: booking._id, role: "admin" }], { session });
+      // }
 
       await booking.save({ session });
     }
