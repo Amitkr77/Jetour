@@ -7,6 +7,7 @@ const customerSchema = new mongoose.Schema({
 }, { _id: false });
 
 const vehicleSchema = new mongoose.Schema({
+    name: { type: String, required: true },
     model_id: { type: String, required: true },
     registration_number: { type: String, required: true },
     vin: { type: String, required: true },

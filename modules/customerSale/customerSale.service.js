@@ -42,16 +42,25 @@ const getByCustomerContact = async (contactNumber) => {
     });
 };
 
-const getAllCustomerSales = async (page = 1, limit = 10) => {
-    const skip = (page - 1) * limit;
 
-    /* ✅ Optimized with Promise.all */
+
+const getAllCustomerSales = async (filters = {}, page = 1, limit = 10) => {
+    const skip = (page - 1) * limit;
+    const query = {};
+
+    if (filters.name) query['customer.name'] = { $regex: filters.name, $options: 'i' };
+    if (filters.contact_number) query['customer.contact_number'] = filters.contact_number;
+    if (filters.vin) query['vehicle.vin'] = filters.vin;
+
+    if (filters.fromDate || filters.toDate) {
+        query['vehicle.sold_date'] = {};
+        if (filters.fromDate) query['vehicle.sold_date'].$gte = new Date(filters.fromDate);
+        if (filters.toDate) query['vehicle.sold_date'].$lte = new Date(filters.toDate);
+    }
+
     const [data, total] = await Promise.all([
-        CustomerSale.find()
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 }),
-        CustomerSale.countDocuments()
+        CustomerSale.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+        CustomerSale.countDocuments(query)
     ]);
 
     return {
@@ -61,6 +70,7 @@ const getAllCustomerSales = async (page = 1, limit = 10) => {
         data
     };
 };
+
 
 const getCustomerSaleById = async (id) => {
     return CustomerSale.findById(id);

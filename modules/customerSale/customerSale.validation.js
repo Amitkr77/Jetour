@@ -8,6 +8,7 @@ const createCustomerSale = Joi.object({
     }).required(),
 
     vehicle: Joi.object({
+        name: Joi.string().required(),
         model_id: Joi.string().required(),
         registration_number: Joi.string().required(),
         vin: Joi.string().required(),

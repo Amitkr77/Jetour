@@ -65,19 +65,6 @@ exports.getByCustomerContact = async (req, res) => {
     }
 };
 
-exports.getAllCustomerSale = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-
-        const data = await service.getAllCustomerSales(page, limit);
-
-        res.json(data);
-
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
 
 exports.getCustomerSaleById = async (req, res) => {
     try {
@@ -97,3 +84,37 @@ exports.getCustomerSaleById = async (req, res) => {
         });
     }
 };
+
+exports.getAllCustomerSales = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const filters = {
+            name: req.query.name,
+            contact_number: req.query.contact_number,
+            vin: req.query.vin,
+            fromDate: req.query.fromDate,
+            toDate: req.query.toDate
+        };
+
+        const data = await service.getAllCustomerSales(filters, page, limit);
+
+        const formatDate = (date) => date ? date.toISOString().split('T')[0] : null;
+        data.data = data.data.map(item => ({
+            ...item.toObject(),
+            vehicle: {
+                ...item.vehicle.toObject(),
+                sold_date: formatDate(item.vehicle.sold_date),
+                last_service_date: formatDate(item.vehicle.last_service_date)
+            },
+            createdAt: formatDate(item.createdAt),
+            updatedAt: formatDate(item.updatedAt)
+        }));
+
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
