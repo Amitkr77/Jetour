@@ -225,11 +225,16 @@ exports.createAdminBooking = async (req, res) => {
     if (!pkg?.package_id) throw new Error("Package ID required");
     if (!schedule?.date || !schedule?.start_time) throw new Error("Booking date and start time required");
 
+
+
     // 2️⃣ Find or create customer
     let dbCustomer = await CustomerModel.findOne({ contact_number: customer.phone, country_code: customer.country_code }).session(session);
     if (!dbCustomer) {
       dbCustomer = (await CustomerModel.create([{ ...customer }], { session }))[0];
     }
+
+    console.log(dbCustomer);
+
 
     // 3️⃣ Find vehicle model
     const vehicleDoc = await vehicleModel.findOne({ vehicle_model: vehicle.vehicle_model }).session(session);
@@ -267,7 +272,7 @@ exports.createAdminBooking = async (req, res) => {
         country_code: dbCustomer.country_code,
         gender: dbCustomer?.gender || "Other",
       },
-      address: dbCustomer.full_address || "",
+      address: dbCustomer?.full_address || customer.address,
       vehicle: {
         vehicle_id: vehicleDoc._id,
         vehicle_model: vehicleDoc.vehicle_model,
