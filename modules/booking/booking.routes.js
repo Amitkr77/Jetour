@@ -7,6 +7,7 @@ router.get("/dashboard", bookingController.getBookingDashboard);
 router.get("/", bookingController.getAllBookings)
 router.post("/customer", bookingController.createCustomerBooking);
 router.post("/admin", bookingController.createAdminBooking);
+router.patch("/admin/:id", bookingController.updateAdminBooking);
 router.get("/customer", bookingController.getCustomerBookings);
 router.get("/filter", bookingController.getBookingByFilter);
 router.get("/:booking_id", bookingController.getBookingById);

@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
       },
       name: { type: String, },
       email: { type: String },
-      gender: { type: String, enum: ["Male", "Female"] },
+      gender: { type: String, enum: ["Male", "Female","Other"] },
       phone: { type: String, required: true },
       country_code: { type: String, required: true }
     },

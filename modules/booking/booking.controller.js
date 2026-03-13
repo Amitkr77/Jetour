@@ -17,151 +17,263 @@ const CustomerVehicle = require("../customers/vehicle/customerVehicle.model")
 
 
 // controllers/booking.controller.js
+// exports.createAdminBooking = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+
+//     const {
+//       customer,
+//       vehicle,
+//       package: pkg,
+//       schedule,
+//       additional_notes, payment_method,
+
+//     } = req.body;
+
+//     // ---------------- VALIDATION ----------------
+
+//     if (!customer?.name || !customer?.phone || !customer?.country_code) {
+//       throw new Error("Customer name, phone and country code required");
+//     }
+
+//     if (!vehicle?.vehicle_model || !vehicle?.registration_number || vehicle?.mileage == null) {
+//       throw new Error("Vehicle model, registration number and mileage required");
+//     }
+
+//     if (!pkg?.package_id) {
+//       throw new Error("Package ID required");
+//     }
+
+//     if (!schedule?.date || !schedule?.start_time) {
+//       throw new Error("Booking date and start time required");
+//     }
+
+
+//     // ---------------- FIND OR CREATE CUSTOMER ----------------
+
+//     let dbCustomer = await CustomerModel.findOne({
+//       contact_number: customer.phone,
+//       country_code: customer.country_code
+//     }).session(session);
+
+
+//     if (!dbCustomer) {
+
+//       dbCustomer = await CustomerModel.create([{
+//         name: customer.name,
+//         contact_number: customer.phone,
+//         country_code: customer.country_code,
+//         email: customer.email || "",
+//         gender: customer.gender,
+//         full_address: customer.address
+//       }], { session });
+
+//       dbCustomer = dbCustomer[0];
+
+//     }
+
+
+//     // ---------------- VEHICLE MODEL ----------------
+
+//     const vehicleDoc = await vehicleModel.findOne({
+//       vehicle_model: vehicle.vehicle_model
+//     }).session(session);
+
+//     if (!vehicleDoc) {
+//       throw new Error("Vehicle model not found");
+//     }
+
+
+//     // ---------------- FIND OR CREATE CUSTOMER VEHICLE ----------------
+
+//     let customerVehicle = await CustomerVehicle.findOne({
+//       customer: dbCustomer._id,
+//       registration_number: vehicle.registration_number
+//     }).session(session);
+
+
+//     if (!customerVehicle) {
+
+//       customerVehicle = await CustomerVehicle.create([{
+//         customer: dbCustomer._id,
+//         vehicle_model: vehicleDoc._id,
+//         registration_number: vehicle.registration_number,
+//         mileage: vehicle.mileage,
+//         category: vehicleDoc.vehicle_category,
+//         id: vehicleDoc.id
+
+//       }], { session });
+
+//       customerVehicle = customerVehicle[0];
+
+//     }
+
+
+//     // ---------------- PACKAGE ----------------
+
+//     const servicePackage = await ServicePackage.findById(pkg.package_id).session(session);
+
+//     if (!servicePackage) {
+//       throw new Error("Package not found");
+//     }
+
+
+//     // ---------------- CALCULATE PRICE ----------------
+
+//     // 4️⃣ Prepare vehicle payload for price calculation
+//     const vehiclePayload = {
+//       vehicle_id: vehicleDoc._id,
+//       mileage: vehicle.mileage
+//     };
+
+//     // 5️⃣ Calculate base price
+//     const base_price = calculatePackagePrice(servicePackage, vehiclePayload);
+
+
+//     const settings = await Settings.findOne({}).session(session);
+
+//     const service_fee = settings?.service_fee || 0;
+
+//     const total_amount = base_price + service_fee;
+
+
+//     // ---------------- CREATE BOOKING ----------------
+
+//     const booking = await Booking.create([{
+
+//       created_by: "admin",
+
+//       customer: {
+//         customer_id: dbCustomer._id,
+//         name: dbCustomer.name,
+//         email: dbCustomer.email,
+//         phone: dbCustomer.contact_number,
+//         country_code: dbCustomer.country_code,
+//         gender: dbCustomer.gender
+//       },
+
+//       address: dbCustomer.full_address,
+
+//       vehicle: {
+//         vehicle_id: vehicleDoc._id,
+//         vehicle_model: vehicleDoc.vehicle_model,
+//         registration_number: customerVehicle.registration_number,
+//         mileage: customerVehicle.mileage
+//       },
+
+//       package: {
+//         package_id: servicePackage._id,
+//         name: servicePackage.name,
+//         worktime: servicePackage.worktime,
+//         base_price,
+//         service_fee,
+//         total_amount
+//       },
+
+//       schedule: {
+//         date: schedule.date,
+//         start_time: schedule.start_time,
+//         slot_ids: []
+//       },
+
+//       payment: {
+//         method: payment_method || "COD",
+//       },
+
+//       status: "pending",
+
+//       additional_notes
+
+//     }], { session });
+
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Admin booking created successfully",
+//       booking: booking[0]
+//     });
+
+//   } catch (error) {
+
+//     await session.abortTransaction();
+//     session.endSession();
+
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message
+//     });
+
+//   }
+// };
+
 exports.createAdminBooking = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const { customer, vehicle, package: pkg, schedule, additional_notes, payment_method } = req.body;
 
-    const {
-      customer,
-      vehicle,
-      package: pkg,
-      schedule,
-      additional_notes
-    } = req.body;
+    // 1️⃣ Validate input (same as before)
+    if (!customer?.name || !customer?.phone || !customer?.country_code) throw new Error("Customer info required");
+    if (!vehicle?.vehicle_model || !vehicle?.registration_number || vehicle?.mileage == null) throw new Error("Vehicle info required");
+    if (!pkg?.package_id) throw new Error("Package ID required");
+    if (!schedule?.date || !schedule?.start_time) throw new Error("Booking date and start time required");
 
-    // ---------------- VALIDATION ----------------
-
-    if (!customer?.name || !customer?.phone || !customer?.country_code) {
-      throw new Error("Customer name, phone and country code required");
-    }
-
-    if (!vehicle?.vehicle_model || !vehicle?.registration_number || vehicle?.mileage == null) {
-      throw new Error("Vehicle model, registration number and mileage required");
-    }
-
-    if (!pkg?.package_id) {
-      throw new Error("Package ID required");
-    }
-
-    if (!schedule?.date || !schedule?.start_time) {
-      throw new Error("Booking date and start time required");
-    }
-
-
-    // ---------------- FIND OR CREATE CUSTOMER ----------------
-
-    let dbCustomer = await CustomerModel.findOne({
-      contact_number: customer.phone,
-      country_code: customer.country_code
-    }).session(session);
-
-
+    // 2️⃣ Find or create customer
+    let dbCustomer = await CustomerModel.findOne({ contact_number: customer.phone, country_code: customer.country_code }).session(session);
     if (!dbCustomer) {
-
-      dbCustomer = await CustomerModel.create([{
-        name: customer.name,
-        contact_number: customer.phone,
-        country_code: customer.country_code,
-        email: customer.email || "",
-        gender: customer.gender,
-        full_address: customer.address
-      }], { session });
-
-      dbCustomer = dbCustomer[0];
-
+      dbCustomer = (await CustomerModel.create([{ ...customer }], { session }))[0];
     }
 
+    // 3️⃣ Find vehicle model
+    const vehicleDoc = await vehicleModel.findOne({ vehicle_model: vehicle.vehicle_model }).session(session);
+    if (!vehicleDoc) throw new Error("Vehicle model not found");
 
-    // ---------------- VEHICLE MODEL ----------------
-
-    const vehicleDoc = await vehicleModel.findOne({
-      vehicle_model: vehicle.vehicle_model
-    }).session(session);
-
-    if (!vehicleDoc) {
-      throw new Error("Vehicle model not found");
-    }
-
-
-    // ---------------- FIND OR CREATE CUSTOMER VEHICLE ----------------
-
-    let customerVehicle = await CustomerVehicle.findOne({
-      customer: dbCustomer._id,
-      registration_number: vehicle.registration_number
-    }).session(session);
-
-
+    // 4️⃣ Find or create customer vehicle
+    let customerVehicle = await CustomerVehicle.findOne({ customer: dbCustomer._id, registration_number: vehicle.registration_number }).session(session);
     if (!customerVehicle) {
-
-      customerVehicle = await CustomerVehicle.create([{
+      customerVehicle = (await CustomerVehicle.create([{
         customer: dbCustomer._id,
         vehicle_model: vehicleDoc._id,
         registration_number: vehicle.registration_number,
         mileage: vehicle.mileage,
         category: vehicleDoc.vehicle_category,
         id: vehicleDoc.id
-
-      }], { session });
-
-      customerVehicle = customerVehicle[0];
-
+      }], { session }))[0];
     }
 
-
-    // ---------------- PACKAGE ----------------
-
+    // 5️⃣ Fetch package & calculate price
     const servicePackage = await ServicePackage.findById(pkg.package_id).session(session);
-
-    if (!servicePackage) {
-      throw new Error("Package not found");
-    }
-
-
-    // ---------------- CALCULATE PRICE ----------------
-
-    // 4️⃣ Prepare vehicle payload for price calculation
-    const vehiclePayload = {
-      vehicle_id: vehicleDoc._id,
-      mileage: vehicle.mileage
-    };
-
-    // 5️⃣ Calculate base price
-    const base_price = calculatePackagePrice(servicePackage, vehiclePayload);
-
-
+    if (!servicePackage) throw new Error("Package not found");
+    const base_price = calculatePackagePrice(servicePackage, { vehicle_id: vehicleDoc._id, mileage: vehicle.mileage });
     const settings = await Settings.findOne({}).session(session);
-
     const service_fee = settings?.service_fee || 0;
-
     const total_amount = base_price + service_fee;
 
-
-    // ---------------- CREATE BOOKING ----------------
-
-    const booking = await Booking.create([{
-
+    // 6️⃣ Create booking (status pending)
+    let booking = (await Booking.create([{
       created_by: "admin",
-
       customer: {
         customer_id: dbCustomer._id,
         name: dbCustomer.name,
-        email: dbCustomer.email,
+        email: dbCustomer.email || "",
         phone: dbCustomer.contact_number,
         country_code: dbCustomer.country_code,
-        gender: dbCustomer.gender
+        gender: dbCustomer?.gender || "Other",
       },
-
-      address: dbCustomer.full_address,
-
+      address: dbCustomer.full_address || "",
       vehicle: {
         vehicle_id: vehicleDoc._id,
         vehicle_model: vehicleDoc.vehicle_model,
         registration_number: customerVehicle.registration_number,
         mileage: customerVehicle.mileage
       },
-
       package: {
         package_id: servicePackage._id,
         name: servicePackage.name,
@@ -170,38 +282,258 @@ exports.createAdminBooking = async (req, res) => {
         service_fee,
         total_amount
       },
-
       schedule: {
         date: schedule.date,
         start_time: schedule.start_time,
         slot_ids: []
       },
-
-      status: booking_status || "pending",
-      payment: {
-        method: payment_method || "COD",
-        status: payment_status || "pending"
-      },
-
+      payment: { method: payment_method || "COD" },
+      status: "pending",
       additional_notes
+    }], { session }))[0];
 
-    }], { session });
+    // 7️⃣ Attempt to assign slots and confirm booking
+    const config = await ScheduleConfig.findOne({}).session(session);
+    const slotInterval = config.slot_interval_minutes;
+    const buffer = config.buffer_between_bookings_minutes;
+    const totalBlock = servicePackage.worktime + buffer;
+    const requiredSlots = Math.ceil(totalBlock / slotInterval);
 
+    const allSlots = await VanSlot.find({ date: booking.schedule.date, status: "available" }).sort({ van: 1, start_time: 1 }).session(session);
+
+    // Group slots by van
+    const grouped = {};
+    allSlots.forEach(slot => {
+      const vanKey = slot.van_id.toString();
+      grouped[vanKey] = grouped[vanKey] || [];
+      grouped[vanKey].push(slot);
+    });
+
+    let selectedVan = null, selectedSlots = [];
+    for (const vanId in grouped) {
+      const slots = grouped[vanId];
+      const slotMap = Object.fromEntries(slots.map(s => [s.start_time, s]));
+      let currentTime = booking.schedule.start_time;
+      const consecutive = [];
+      for (let k = 0; k < requiredSlots; k++) {
+        if (!slotMap[currentTime]) break;
+        consecutive.push(slotMap[currentTime]);
+        const [hour, minute] = currentTime.split(":").map(Number);
+        const next = new Date(0, 0, 0, hour, minute + slotInterval);
+        currentTime = next.getHours().toString().padStart(2, "0") + ":" + next.getMinutes().toString().padStart(2, "0");
+      }
+      if (consecutive.length === requiredSlots) {
+        selectedVan = vanId;
+        selectedSlots = consecutive;
+        break;
+      }
+    }
+
+    if (!selectedVan) {
+      booking.status = "pending_manual_assignment";
+      booking.payment.status = "paid";
+      await booking.save({ session });
+    } else {
+      // Lock slots
+      const slotIds = selectedSlots.map(s => s._id);
+      await VanSlot.updateMany({ _id: { $in: slotIds }, status: "available" }, { status: "booked", booking_id: booking._id }, { session });
+
+      const van = await ServiceVan.findById(selectedVan).session(session);
+      const needsAttention = !van.driver || !van.technician;
+
+      booking.schedule.slot_ids = slotIds;
+      booking.schedule.end_time = selectedSlots[selectedSlots.length - 1].end_time;
+      booking.assignment = {
+        service_van: van._id,
+        driver: van.driver || null,
+        technician: van.technician || null,
+        needs_attention: needsAttention
+      };
+      booking.service_progress = {
+        status: "not_started",
+        pre_inspection: false,
+        checklist_completed: false,
+        before_photos: [],
+        after_photos: [],
+        inventory_updated: false,
+        summary: "",
+        next_service_recommendation: "",
+        started_at: null,
+        completed_at: null
+      };
+      booking.payment.status = "paid";
+      booking.status = "confirmed";
+
+      if (needsAttention) {
+        await Notification.create([{ title: "Booking needs driver/technician assignment", booking: booking._id, role: "admin" }], { session });
+      }
+
+      await booking.save({ session });
+    }
 
     await session.commitTransaction();
     session.endSession();
 
+    return res.status(201).json({ success: true, message: "Admin booking created successfully", booking });
 
-    return res.status(201).json({
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateAdminBooking = async (req, res) => {
+  try {
+
+    const bookingId = req.params.id;
+
+    const {
+      customer,
+      vehicle,
+      package: pkg,
+      schedule,
+      payment_method,
+      payment_status,
+      booking_status,
+      additional_notes
+    } = req.body;
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
+
+    // ---------------- CUSTOMER ----------------
+
+    if (customer) {
+      if (customer.name) booking.customer.name = customer.name;
+      if (customer.phone) booking.customer.phone = customer.phone;
+      if (customer.country_code) booking.customer.country_code = customer.country_code;
+      if (customer.email !== undefined) booking.customer.email = customer.email;
+      if (customer.gender) booking.customer.gender = customer.gender;
+      if (customer.address) {
+        booking.address = customer.address;
+      }
+    }
+
+    // ---------------- VEHICLE ----------------
+
+    if (vehicle) {
+
+      if (vehicle.vehicle_model) {
+
+        const vehicleDoc = await vehicleModel.findOne({
+          vehicle_model: vehicle.vehicle_model
+        });
+
+        if (!vehicleDoc) {
+          return res.status(400).json({
+            success: false,
+            message: "Vehicle model not found"
+          });
+        }
+
+        booking.vehicle.vehicle_id = vehicleDoc._id;
+        booking.vehicle.vehicle_model = vehicleDoc.vehicle_model;
+      }
+
+      if (vehicle.registration_number) {
+        booking.vehicle.registration_number = vehicle.registration_number;
+      }
+
+      if (vehicle.mileage !== undefined) {
+        booking.vehicle.mileage = vehicle.mileage;
+      }
+    }
+
+    // ---------------- PACKAGE ----------------
+
+    if (pkg?.package_id) {
+
+      const servicePackage = await ServicePackage.findById(pkg.package_id);
+
+      if (!servicePackage) {
+        return res.status(400).json({
+          success: false,
+          message: "Package not found"
+        });
+      }
+
+      const vehiclePayload = {
+        vehicle_id: booking.vehicle.vehicle_id,
+        mileage: booking.vehicle.mileage
+      };
+
+      const base_price = calculatePackagePrice(servicePackage, vehiclePayload);
+
+      const settings = await Settings.findOne({});
+
+      const service_fee = settings?.service_fee || 0;
+
+      const total_amount = base_price + service_fee;
+
+      booking.package = {
+        package_id: servicePackage._id,
+        name: servicePackage.name,
+        worktime: servicePackage.worktime,
+        base_price,
+        service_fee,
+        total_amount
+      };
+    }
+
+    // ---------------- SCHEDULE ----------------
+
+    if (schedule) {
+
+      if (schedule.date) {
+        booking.schedule.date = schedule.date;
+      }
+
+      if (schedule.start_time) {
+        booking.schedule.start_time = schedule.start_time;
+      }
+
+    }
+
+    // ---------------- PAYMENT ----------------
+
+    if (payment_method) {
+      booking.payment.method = payment_method;
+    }
+
+    if (payment_status) {
+      booking.payment.status = payment_status;
+    }
+
+    // ---------------- BOOKING STATUS ----------------
+
+    if (booking_status) {
+      booking.status = booking_status;
+    }
+
+    // ---------------- NOTES ----------------
+
+    if (additional_notes !== undefined) {
+      booking.additional_notes = additional_notes;
+    }
+
+    await booking.save();
+
+    return res.status(200).json({
       success: true,
-      message: "Admin booking created successfully",
-      booking: booking[0]
+      message: "Booking updated successfully",
+      booking
     });
 
   } catch (error) {
 
-    await session.abortTransaction();
-    session.endSession();
+    console.error("Update booking error:", error);
 
     return res.status(500).json({
       success: false,
@@ -276,10 +608,7 @@ exports.createCustomerBooking = async (req, res) => {
         start_time: booking_time,
         slot_ids: []
       },
-      // payment: {
-      //   method: payment_method || "Card",
-      //   status: "pending"
-      // },
+
       status: "pending",
       additional_notes
     });
