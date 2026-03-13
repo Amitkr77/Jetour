@@ -705,28 +705,24 @@ exports.getBookingById = async (req, res) => {
 
 exports.getAllBookings = async (req, res) => {
   try {
-    // Optional: Pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    // Optional: Filter by status (query param)
     const filter = {};
     if (req.query.status) {
       filter.status = req.query.status;
     }
 
-    // Fetch bookings from DB
     const bookings = await Booking.find(filter)
       .populate("assignment.technician", "name phone")
       .populate("assignment.driver", "name phone")
-      .populate("assignment.service_van", "van_number")
+      .populate("assignment.service_van", " registration_number")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    // Optional: total count for pagination
     const total = await Booking.countDocuments(filter);
 
     return res.status(200).json({
@@ -787,13 +783,14 @@ exports.getBookingByFilter = async (req, res) => {
       Booking.find(filter)
         .populate("assignment.technician", "name phone")
         .populate("assignment.driver", "name phone")
-        .populate("assignment.service_van", "vehicle_model")
+        .populate("assignment.service_van", "registration_number")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(Number(limit))
         .lean(),
       Booking.countDocuments(filter)
     ]);
+
 
     return res.status(200).json({
       success: true,
