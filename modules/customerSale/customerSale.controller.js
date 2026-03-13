@@ -14,6 +14,7 @@ exports.createCustomerSale = async (req, res) => {
         const result = await service.createCustomerSale(value);
 
         res.status(201).json({
+            success: true,
             message: "Customer and Vehicle created successfully",
             data: result
         });
@@ -41,6 +42,7 @@ exports.updateCustomerSale = async (req, res) => {
         }
 
         res.json({
+            success: true,
             message: "Updated successfully",
             data: updated
         });
