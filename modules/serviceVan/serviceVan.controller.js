@@ -24,38 +24,47 @@ exports.createServiceVan = [
 
       const { driver_id, technician_id } = req.body;
 
-      // 🔍 Find driver
-      const driver = await Driver.findOne({ driver_id });
-      if (!driver) {
-        return res.status(404).json({
-          success: false,
-          message: "Driver not found",
-          data: null
-        });
+      let driver = null;
+      let technician = null;
+
+      // 🔍 Check driver only if provided
+      if (driver_id) {
+        driver = await Driver.findOne({ driver_id });
+
+        if (!driver) {
+          return res.status(404).json({
+            success: false,
+            message: "Driver not found",
+            data: null
+          });
+        }
+
+        if (driver.assigned_van) {
+          return res.status(400).json({
+            success: false,
+            message: "Driver already assigned to another van"
+          });
+        }
       }
 
-      if (driver.assigned_van) {
-        return res.status(400).json({
-          success: false,
-          message: "Driver already assigned to another van"
-        });
-      }
+      // 🔍 Check technician only if provided
+      if (technician_id) {
+        technician = await Technician.findOne({ technician_id });
 
-      // 🔍 Find technician
-      const technician = await Technician.findOne({ technician_id });
-      if (!technician) {
-        return res.status(404).json({
-          success: false,
-          message: "Technician not found",
-          data: null
-        });
-      }
+        if (!technician) {
+          return res.status(404).json({
+            success: false,
+            message: "Technician not found",
+            data: null
+          });
+        }
 
-      if (technician.assigned_van) {
-        return res.status(400).json({
-          success: false,
-          message: "Technician already assigned to another van"
-        });
+        if (technician.assigned_van) {
+          return res.status(400).json({
+            success: false,
+            message: "Technician already assigned to another van"
+          });
+        }
       }
 
       const image = req.file ? req.file.path : req.body.image;
@@ -63,17 +72,22 @@ exports.createServiceVan = [
       // ✅ Create van
       const van = await serviceVanService.createServiceVan({
         ...req.body,
-        driver: driver._id,
-        technician: technician._id,
+        driver: driver ? driver._id : null,
+        technician: technician ? technician._id : null,
         image
       });
 
-      // ✅ Update driver & technician after van created
-      driver.assigned_van = van._id;
-      technician.assigned_van = van._id;
+      // ✅ Update driver if exists
+      if (driver) {
+        driver.assigned_van = van._id;
+        await driver.save();
+      }
 
-      await driver.save();
-      await technician.save();
+      // ✅ Update technician if exists
+      if (technician) {
+        technician.assigned_van = van._id;
+        await technician.save();
+      }
 
       return res.status(201).json({
         success: true,
@@ -158,7 +172,7 @@ exports.updateServiceVan = [
 
       const updateData = {
         ...req.body,
-        ...(req.file && { image: req.file.path }) // ✅ now this works
+        ...(req.file && { image: req.file.path }) 
       };
 
       const van = await serviceVanService.updateServiceVan(

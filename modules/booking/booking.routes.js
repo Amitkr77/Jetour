@@ -8,6 +8,7 @@ router.get("/", bookingController.getAllBookings)
 router.post("/customer", bookingController.createCustomerBooking);
 router.post("/admin", bookingController.createAdminBooking);
 router.get("/customer", bookingController.getCustomerBookings);
+router.get("/filter", bookingController.getBookingByFilter);
 router.get("/:booking_id", bookingController.getBookingById);
 router.post("/customer/confirm", bookingController.confirmBookingPayment);
 // router.get("/customer/history/:customer_id", bookingController.getCustomerBookingHistory);

@@ -13,13 +13,11 @@ const technicianInventorySchema = new mongoose.Schema(
             required: true,
             min: 0
         },
-
-        unit_price: {
-            type: Number,
-            required: true,
-            min: 0
-        },
-
+        technician_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Technician",
+            default: null
+        }
     },
     {
         timestamps: {

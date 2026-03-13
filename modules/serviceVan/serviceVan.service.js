@@ -23,7 +23,7 @@ exports.getServiceVanById = async (id) => {
       path: "technician",
       select: "name technician_id"
     })
-    .lean(); // converts mongoose doc → plain JS object
+    .lean(); 
 
   if (!van) return null;
 

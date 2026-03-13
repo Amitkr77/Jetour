@@ -575,6 +575,62 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
+exports.getBookingByFilter = async (req, res) => {
+  try {
+    const { name, contact, from_date, to_date, status, page = 1, limit = 20 } = req.query;
+
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (name) {
+      filter["customer.name"] = { $regex: name, $options: "i" };
+    }
+
+    if (contact) {
+      filter["customer.phone"] = { $regex: contact, $options: "i" };
+    }
+
+    if (from_date || to_date) {
+      filter.createdAt = {};
+
+      if (from_date) {
+        const [day, month, year] = from_date.split("/");
+        filter.createdAt.$gte = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+      }
+
+      if (to_date) {
+        const [day, month, year] = to_date.split("/");
+        filter.createdAt.$lte = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+      }
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate("assignment.technician", "name phone")
+      .populate("assignment.driver", "name phone")
+      .populate("assignment.service_van", "vehicle_model")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      bookings
+    });
+
+  } catch (error) {
+    console.error("Get bookings error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
 exports.getCustomerBookings = async (req, res) => {
   try {
     const { contact_number } = req.query;
