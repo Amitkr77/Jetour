@@ -230,11 +230,27 @@ exports.createAdminBooking = async (req, res) => {
     // 2️⃣ Find or create customer
     let dbCustomer = await CustomerModel.findOne({ contact_number: customer.phone, country_code: customer.country_code }).session(session);
     if (!dbCustomer) {
-      dbCustomer = (await CustomerModel.create([{ ...customer }], { session }))[0];
+      // dbCustomer = (await CustomerModel.create([{ ...customer }], { session }))[0];
+      dbCustomer = (await CustomerModel.create([{
+        name: customer.name,
+        contact_number: customer.phone,
+        country_code: customer.country_code,
+        email: customer.email,
+        gender: customer.gender,
+        lat: customer.address.lat,
+        lng: customer.address.lng,
+        full_address: {
+          governorate: customer.address.governorate,
+          area: customer.address.area,
+          block: customer.address.block,
+          street: customer.address.street,
+          building_number: customer.address.building_no,
+          floor_number: customer.address.floor_no,
+          flat_number: customer.address.flat_no,
+          paci_details: customer.address.paci_details,
+        }
+      }], { session }))[0];
     }
-
-    console.log(dbCustomer);
-
 
     // 3️⃣ Find vehicle model
     const vehicleDoc = await vehicleModel.findOne({ vehicle_model: vehicle.vehicle_model }).session(session);
@@ -261,6 +277,19 @@ exports.createAdminBooking = async (req, res) => {
     const service_fee = settings?.service_fee || 0;
     const total_amount = base_price + service_fee;
 
+    const bookingAddress = {
+      governorate: dbCustomer.full_address.governorate,
+      area: dbCustomer.full_address.area,
+      block: dbCustomer.full_address.block,
+      street: dbCustomer.full_address.street,
+      building_no: dbCustomer.full_address.building_number,
+      floor_no: dbCustomer.full_address.floor_number,
+      flat_no: dbCustomer.full_address.flat_number,
+      paci_details: dbCustomer.full_address.paci_details,
+      lat: dbCustomer.lat,
+      lng: dbCustomer.lng
+    };
+
     // 6️⃣ Create booking (status pending)
     let booking = (await Booking.create([{
       created_by: "admin",
@@ -272,7 +301,7 @@ exports.createAdminBooking = async (req, res) => {
         country_code: dbCustomer.country_code,
         gender: dbCustomer?.gender || "Other",
       },
-      address: dbCustomer?.full_address || customer.address,
+      address: bookingAddress,
       vehicle: {
         vehicle_id: vehicleDoc._id,
         vehicle_model: vehicleDoc.vehicle_model,
