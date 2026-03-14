@@ -27,4 +27,4 @@ const technicianInventorySchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model('Inventory', technicianInventorySchema);
+module.exports = mongoose.model('technicianInventory', technicianInventorySchema);

@@ -88,3 +88,21 @@ exports.rejectInventoryRequest = async (req, res) => {
     });
   }
 };
+
+exports.getAllRequests = async (req, res) => {
+  try {
+    const requests = await InventoryRequestService.getAllRequests();
+
+    res.status(200).json({
+      success: true,
+      count: requests.length,
+      data: requests
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

@@ -44,3 +44,7 @@ bower_components/
 
 test-db.js
 jetuor.sql
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

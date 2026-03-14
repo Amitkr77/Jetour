@@ -1,22 +1,35 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const controller = require('./inventory.controller');
-const request = require('./request/inventory-request.controller')
 
-router.post('/', controller.createInventory);
-router.get('/', controller.getAllInventory);
-router.get('/:id', controller.getInventoryDetail);
-// Update using param
-router.put('/:id', controller.updateInventory);
+const controller = require("./inventory.controller");
+const request = require("./request/inventory-request.controller");
 
-// Update using query
-router.put('/', controller.updateInventory);
-router.delete('/:id', controller.deleteInventory);
+/* ================= INVENTORY ================= */
 
-// requests
-router.use('/request', request.createInventoryRequest);
-// Admin
+// Create inventory
+router.post("/", controller.createInventory);
+
+// Get all inventory
+router.get("/", controller.getAllInventory);
+
+// Inventory requests
+router.get("/all-request", request.getAllRequests);
+
+// Technician create request
+router.post("/request", request.createInventoryRequest);
+
+// Admin actions
 router.put("/admin/request/approve/:request_id", request.approveInventoryRequest);
 router.put("/admin/request/reject/:request_id", request.rejectInventoryRequest);
+
+// Inventory detail
+router.get("/:id", controller.getInventoryDetail);
+
+// Update inventory
+router.put("/:id", controller.updateInventory);
+router.put("/", controller.updateInventory);
+
+// Delete inventory
+router.delete("/:id", controller.deleteInventory);
 
 module.exports = router;
