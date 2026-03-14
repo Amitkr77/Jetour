@@ -23,8 +23,13 @@ const customerSaleRoutes = require('./modules/customerSale/customerSale.route')
 const app = express();
 
 app.use(helmet());
-app.use(cors());
-app.use(morgan('dev'));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  })
+); app.use(morgan('dev'));
 app.use(express.json());
 
 app.use('/api/v1/admin', adminRoutes);
@@ -34,7 +39,7 @@ app.use('/api/v1/drivers', driverRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/service-vans', serviceVanRoutes);
 app.use("/api/v1/packages", packagesRoutes);
-app.use("/api/v1/admin/settings", settingsRoutes); // this needs to check before deploying
+app.use("/api/v1/admin/settings", settingsRoutes);
 app.use('/api/v1/inventory_item', inventoryRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
