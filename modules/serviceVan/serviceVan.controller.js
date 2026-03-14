@@ -149,50 +149,124 @@ exports.getServiceVanDetail = async (req, res, next) => {
 };
 
 exports.updateServiceVan = [
-  parser.single('image'),
+  parser.single("image"),
   async (req, res, next) => {
     try {
-      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      const vanId = req.params.id;
+
+      if (!mongoose.Types.ObjectId.isValid(vanId)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid service van ID',
-          data: null
+          message: "Invalid service van ID"
         });
       }
 
-      const { error } = validation.updateServiceVanSchema.validate(req.body);
+      const van = await ServiceVan.findById(vanId);
 
-      if (error) {
-        return res.status(400).json({
+      if (!van) {
+        return res.status(404).json({
           success: false,
-          message: error.message,
-          data: null
+          message: "Service van not found"
+        });
+      }
+
+      const { driver_id, technician_id } = req.body;
+
+      let driver = null;
+      let technician = null;
+
+      // 🔹 DRIVER LOGIC
+      if (driver_id === "null" || driver_id === null) {
+        if (van.driver) {
+          await Driver.findByIdAndUpdate(van.driver, {
+            assigned_van: null
+          });
+        }
+
+        req.body.driver = null;
+        req.body.driver_id = null;
+      }
+
+      else if (driver_id) {
+        driver = await Driver.findOne({ driver_id });
+
+        if (!driver) {
+          return res.status(404).json({
+            success: false,
+            message: "Driver not found"
+          });
+        }
+
+        if (driver.assigned_van && driver.assigned_van.toString() !== vanId) {
+          return res.status(400).json({
+            success: false,
+            message: "Driver already assigned to another van"
+          });
+        }
+
+        req.body.driver = driver._id;
+
+        await Driver.findByIdAndUpdate(driver._id, {
+          assigned_van: vanId
+        });
+      }
+
+      // 🔹 TECHNICIAN LOGIC
+      if (technician_id === "null" || technician_id === null) {
+        if (van.technician) {
+          await Technician.findByIdAndUpdate(van.technician, {
+            assigned_van: null
+          });
+        }
+
+        req.body.technician = null;
+        req.body.technician_id = null;
+      }
+
+      else if (technician_id) {
+        technician = await Technician.findOne({ technician_id });
+
+        if (!technician) {
+          return res.status(404).json({
+            success: false,
+            message: "Technician not found"
+          });
+        }
+
+        if (
+          technician.assigned_van &&
+          technician.assigned_van.toString() !== vanId
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Technician already assigned to another van"
+          });
+        }
+
+        req.body.technician = technician._id;
+
+        await Technician.findByIdAndUpdate(technician._id, {
+          assigned_van: vanId
         });
       }
 
       const updateData = {
         ...req.body,
-        ...(req.file && { image: req.file.path }) 
+        ...(req.file && { image: req.file.path })
       };
 
-      const van = await serviceVanService.updateServiceVan(
-        req.params.id,
-        updateData
+      const updatedVan = await ServiceVan.findByIdAndUpdate(
+        vanId,
+        updateData,
+        { new: true }
       );
-
-      if (!van) {
-        return res.status(404).json({
-          success: false,
-          message: 'Service van not found',
-          data: null
-        });
-      }
 
       return res.status(200).json({
         success: true,
-        message: 'Service van updated successfully',
-        data: van
+        message: "Service van updated successfully",
+        data: updatedVan
       });
+
     } catch (err) {
       next(err);
     }
