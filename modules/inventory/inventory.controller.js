@@ -31,18 +31,12 @@ exports.createInventory = async (req, res, next) => {
 // GET ALL
 exports.getAllInventory = async (req, res, next) => {
     try {
-        const result = await inventoryService.getAllInventory(req.query);
+        const result = await inventoryService.getAllInventory(); // no query needed
 
         res.status(200).json({
             success: true,
             message: 'Inventory fetched successfully',
             data: result.data,
-            meta: {
-                total: result.total,
-                page: result.page,
-                page_size: result.page_size,
-                total_pages: result.total_pages
-            }
         });
 
     } catch (err) {
