@@ -42,12 +42,12 @@ const customerSchema = new mongoose.Schema({
   },
   lat: { type: Number },
   lng: { type: Number },
+
   email: {
     type: String,
     lowercase: true,
     trim: true,
-    unique: true,
-    sparse: true
+
   },
 
   civil_id: {
@@ -95,7 +95,7 @@ const customerSchema = new mongoose.Schema({
     // required: true,
     select: false
   },
-  
+
 
   full_address: addressSchema,
 
