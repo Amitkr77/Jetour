@@ -210,7 +210,7 @@ exports.verifyTechnician = async (req, res, next) => {
       data: {
         technician_id: technician.technician_id,
         name: technician.name,
-        // _id: technician._id,
+        id: technician._id,
         // contact: technician.contact,
         // email: technician.email,
         // status: technician.status
