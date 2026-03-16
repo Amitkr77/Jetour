@@ -183,7 +183,7 @@ exports.verifyTechnician = async (req, res, next) => {
     }
 
     const isMatch = password === technician.password;
-    
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -208,9 +208,10 @@ exports.verifyTechnician = async (req, res, next) => {
       message: 'Technician logged in successfully',
       token,
       data: {
-        technician_id: technician.technician_id,
-        name: technician.name,
-        id: technician._id,
+        technician
+        // technician_id: technician.technician_id,
+        // name: technician.name,
+        // id: technician._id,
         // contact: technician.contact,
         // email: technician.email,
         // status: technician.status
