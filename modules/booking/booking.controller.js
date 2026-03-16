@@ -633,13 +633,13 @@ exports.confirmBookingPayment = async (req, res) => {
     await booking.save({ session });
 
     // 6. Notify admin if needed
-    if (needsAttention) {
-      await Notification.create([{
-        title: "Booking needs driver/technician assignment",
-        booking: booking._id,
-        role: "admin"
-      }], { session });
-    }
+    // if (needsAttention) {
+    //   await Notification.create([{
+    //     title: "Booking needs driver/technician assignment",
+    //     booking: booking._id,
+    //     role: "admin"
+    //   }], { session });
+    // }
     // await Notification.create([{
     //   title: "Your booking is confirmed",
     //   booking: booking._id,
