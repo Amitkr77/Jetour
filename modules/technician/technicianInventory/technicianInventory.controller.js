@@ -22,12 +22,16 @@ const getAllTechnicianInventories = async (req, res) => {
 };
 
 // Get single technician inventory by ID
-const getTechnicianInventoryById = async (req, res) => {
+const getTechnicianInventoryByTechnicianId = async (req, res) => {
     try {
-        const { id } = req.params;
-        const inventory = await TechnicianInventory.findById(id)
-            .populate('technician', 'name technician_id ')
-            .populate('inventory.item', 'name ');
+        const { technicianId } = req.params;
+
+        // Find the inventory document for the given technician
+        const inventory = await TechnicianInventory.findOne({ technician: technicianId })
+            .populate('technician', 'name technician_id')
+            .populate('inventory.item', 'name');
+
+
 
         if (!inventory) {
             return res.status(404).json({
@@ -51,5 +55,5 @@ const getTechnicianInventoryById = async (req, res) => {
 
 module.exports = {
     getAllTechnicianInventories,
-    getTechnicianInventoryById
+    getTechnicianInventoryByTechnicianId
 };

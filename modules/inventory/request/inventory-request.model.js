@@ -41,9 +41,7 @@ const inventoryRequestSchema = new mongoose.Schema(
     },
 
     approved_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      default: null
+      type: String
     },
 
     approved_at: Date,

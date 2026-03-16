@@ -10,7 +10,7 @@ exports.createRequest = async (technicianId, items) => {
 };
 
 // Admin approve request
-exports.approveRequest = async (requestId, adminId) => {
+exports.approveRequest = async (requestId) => {
   const request = await InventoryRequest.findById(requestId);
 
   if (!request) throw new Error("Request not found");
@@ -18,7 +18,7 @@ exports.approveRequest = async (requestId, adminId) => {
 
   // 🔹 Update request status
   request.status = "approved";
-  request.approved_by = adminId;
+  request.approved_by = "Admin";
   request.approved_at = new Date();
   await request.save();
 

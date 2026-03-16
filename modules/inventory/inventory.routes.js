@@ -13,6 +13,7 @@ router.post("/", controller.createInventory);
 router.get("/", controller.getAllInventory);
 
 // Inventory requests
+router.get("/request/:technicianId", request.getTechnicianRequests);
 router.get("/all-request", request.getAllRequests);
 
 // Technician create request

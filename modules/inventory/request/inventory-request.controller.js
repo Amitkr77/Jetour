@@ -45,11 +45,9 @@ exports.createInventoryRequest = async (req, res) => {
 exports.approveInventoryRequest = async (req, res) => {
   try {
     const { request_id } = req.params;
-    const adminId = req.user._id;
 
     const request = await InventoryRequestService.approveRequest(
-      request_id,
-      adminId
+      request_id
     );
 
     res.json({
@@ -104,5 +102,30 @@ exports.getAllRequests = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+exports.getTechnicianRequests = async (req, res, next) => {
+  try {
+    const { technicianId } = req.params;
+
+    if (!technicianId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Technician ID is required'
+      });
+    }
+
+    const requests = await InventoryRequestService.getTechnicianRequests(technicianId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Technician requests fetched successfully',
+      data: requests
+    });
+
+  } catch (error) {
+    console.error(error);
+    next(error); 
   }
 };
