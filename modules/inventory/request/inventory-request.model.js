@@ -4,7 +4,7 @@ const requestItemSchema = new mongoose.Schema(
   {
     item: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "InventoryItem",
+      ref: "Inventory",
       required: true
     },
     quantity: {

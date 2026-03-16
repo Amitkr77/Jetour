@@ -1,5 +1,5 @@
 const InventoryRequest = require("./inventory-request.model");
-const TechnicianInventory = require("../../technician/technicianInventory/technicianInventory.model")
+const TechnicianInventory = require("../../technician/technicianInventory/technicianInventory.model");
 
 // Technician creates request
 exports.createRequest = async (technicianId, items) => {
@@ -11,42 +11,37 @@ exports.createRequest = async (technicianId, items) => {
 
 // Admin approve request
 exports.approveRequest = async (requestId, adminId) => {
-
   const request = await InventoryRequest.findById(requestId);
 
-  if (!request) {
-    throw new Error("Request not found");
-  }
-
-  if (request.status !== "pending") {
-    throw new Error("Request already processed");
-  }
+  if (!request) throw new Error("Request not found");
+  if (request.status !== "pending") throw new Error("Request already processed");
 
   // 🔹 Update request status
   request.status = "approved";
   request.approved_by = adminId;
   request.approved_at = new Date();
-
   await request.save();
 
   // 🔹 Update technician inventory
-  for (const item of request.items) {
+  const techInventory = await TechnicianInventory.findOne({ technician: request.technician });
 
-    const existing = await TechnicianInventory.findOne({
-      technician: request.technician,
-      item: item.item
-    });
-
-    if (existing) {
-      existing.quantity += item.quantity;
-      await existing.save();
-    } else {
-      await TechnicianInventory.create({
-        technician: request.technician,
-        item: item.item,
-        quantity: item.quantity
-      });
+  if (techInventory) {
+    // Update existing items or add new ones
+    for (const item of request.items) {
+      const existingItem = techInventory.inventory.find(i => i.item.toString() === item.item.toString());
+      if (existingItem) {
+        existingItem.quantity += item.quantity;
+      } else {
+        techInventory.inventory.push({ item: item.item, quantity: item.quantity });
+      }
     }
+    await techInventory.save();
+  } else {
+    // Create new technician inventory document
+    await TechnicianInventory.create({
+      technician: request.technician,
+      inventory: request.items.map(i => ({ item: i.item, quantity: i.quantity }))
+    });
   }
 
   return request;
@@ -68,17 +63,45 @@ exports.rejectRequest = async (requestId, reason) => {
 };
 
 // Get all requests (admin)
-exports.getAllRequests = async () => {
-  return InventoryRequest.find()
-    .populate("technician", "technician_id name")
-    .populate("approved_by", "name email")
-    // .populate("items.inventory_id", "name quantity")
-    .sort({ created_at: -1 });
-};
 
+exports.getAllRequests = async () => {
+  const requests = await InventoryRequest.find()
+    .populate("technician", "technician_id name")
+    .populate("items.item", "name quantity")
+    .sort({ createdAt: -1 });
+
+  const formatted = [];
+
+  for (const req of requests) {
+    for (const item of req.items) {
+      formatted.push({
+        request_id: req._id,
+        technician: {
+          name: req.technician?.name,
+          id: req.technician?.technician_id
+        },
+
+        part: item.item?.name || "Unknown",
+
+        requested_qty: item.quantity,
+
+        company_qty: item.item?.quantity || 0,
+
+        request_date: req.requested_at,
+
+        approve_reject_date:
+          req.status !== "pending" ? req.updatedAt : "pending",
+
+        status: req.status,
+      });
+    }
+  }
+
+  return formatted;
+};
 // Get technician requests
 exports.getTechnicianRequests = async (technicianId) => {
   return InventoryRequest.find({ technician: technicianId })
-    .populate("items.inventory_id", "name quantity")
+    .populate("items.item", "name quantity")
     .sort({ created_at: -1 });
 };
