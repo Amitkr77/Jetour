@@ -6,9 +6,9 @@ const { startSlotCron } = require("./jobs/slotCron.job");
 const { generateSlots } = require("./modules/vanSlot/slotGenerator.service");
 
 // Generate initial slots on server start
-// generateSlots();
+generateSlots();
 
-startSlotCron();
+// startSlotCron();
 
 const PORT = process.env.PORT || 5000;
 

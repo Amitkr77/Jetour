@@ -134,6 +134,7 @@ exports.getUpcomingJobs = async (req, res) => {
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 });
 
+
     return res.status(200).json({
       success: true,
       message: "Upcoming jobs fetched successfully",
@@ -259,7 +260,6 @@ exports.getMyJob = async (req, res) => {
 
     const technician = await Technician.findOne({ technician_id: technicianId });
 
-
     // ===============================
     // 1️⃣ Fetch Jobs (assigned to technician)
     // ===============================
@@ -270,6 +270,7 @@ exports.getMyJob = async (req, res) => {
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
 
+
     // ===============================
     // 2️⃣ Format Response Data
     // ===============================
@@ -277,7 +278,7 @@ exports.getMyJob = async (req, res) => {
       package_name: booking.package?.name || null,
       vehicle_name: booking.vehicle?.vehicle_model || null,
       status:
-        booking.service_progress?.status === "in_progress"
+        booking?.service_progress?.status === "in_progress"
           ? "in_progress"
           : booking.status === "confirmed"
             ? "scheduled"
@@ -291,14 +292,6 @@ exports.getMyJob = async (req, res) => {
         contact: booking.customer?.phone || null
       }
     }));
-
-    console.log(bookings[0].service_progress?.status);
-    console.log(bookings[1].service_progress?.status);
-    console.log(bookings[2].service_progress?.status);
-    console.log(bookings[3].service_progress?.status);
-    console.log(bookings[4].service_progress?.status);
-    // console.log(bookings[5].service_progress?.status);
-
 
 
     // ===============================

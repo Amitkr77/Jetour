@@ -10,9 +10,9 @@ const parser = createUploader('booking/serivice');
 // router.use(authMiddleware);
 // router.use(roleMiddleware("technician"));
 
+router.get("/my-job/:technicianId", technicianController.getMyJob);
 router.get("/dashboard/:technicianId", technicianController.getDashboard);
 router.get("/active-job/:technicianId", technicianController.getActiveJob);
-router.get("/my-job/:technicianId", technicianController.getMyJob);
 router.get("/upcoming-jobs/:technicianId", technicianController.getUpcomingJobs);
 router.get("/history", technicianController.getHistory);
 
