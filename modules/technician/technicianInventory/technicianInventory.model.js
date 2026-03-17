@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const inventoryItemSchema = new mongoose.Schema({
+    _id: false,
     item: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Inventory",
