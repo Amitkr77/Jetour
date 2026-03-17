@@ -3,6 +3,13 @@ const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
 const { schedule } = require("node-cron");
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+
+// Load the plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -123,8 +130,8 @@ exports.getUpcomingJobs = async (req, res) => {
     }
 
     // 📅 Get today's start time
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+
+    const today = dayjs().tz("Asia/Kolkata").startOf("day").toDate();
 
     // 🔍 Fetch upcoming jobs
     const jobs = await Booking.find({
@@ -334,7 +341,7 @@ exports.startJob = async (req, res) => {
     if (booking.assignment.technician.toString() !== technician._id.toString())
       return res.status(403).json({ message: "Unauthorized" });
 
-    // booking.status = "in_progress";
+    booking.status = "in-progress"
     booking.service_progress.status = "in_progress";
     booking.service_progress.started_at = new Date();
 
