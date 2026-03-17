@@ -26,12 +26,9 @@ const getTechnicianInventoryByTechnicianId = async (req, res) => {
     try {
         const { technicianId } = req.params;
 
-        // Find the inventory document for the given technician
         const inventory = await TechnicianInventory.findOne({ technician: technicianId })
-            .populate('technician', 'name technician_id')
-            .populate('inventory.item', 'name');
-
-
+            .populate('inventory.item', 'name')
+            .lean();
 
         if (!inventory) {
             return res.status(404).json({
@@ -40,10 +37,23 @@ const getTechnicianInventoryByTechnicianId = async (req, res) => {
             });
         }
 
+        // ✅ Transform data to required format
+        const formattedData = {
+            inventory: inventory.inventory.map(item => ({
+                _id: item.item?._id,     // item id
+                name: item.item?.name,  // item name
+                quantity: item.quantity
+            })),
+            created_at: inventory.created_at,
+            updated_at: inventory.updated_at,
+            __v: inventory.__v
+        };
+
         res.status(200).json({
             success: true,
-            data: inventory
+            data: formattedData
         });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({
