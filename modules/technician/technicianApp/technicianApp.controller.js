@@ -2,14 +2,6 @@ const Booking = require("../../booking/booking.model");
 const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
-const { schedule } = require("node-cron");
-const dayjs = require("dayjs");
-const utc = require("dayjs/plugin/utc");
-const timezone = require("dayjs/plugin/timezone");
-
-// Load the plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -131,13 +123,13 @@ exports.getUpcomingJobs = async (req, res) => {
 
     // 📅 Get today's start time
 
-    const today = dayjs().tz("Asia/Kolkata").startOf("day").toDate();
+    const todayStr = new Date().toISOString().split("T")[0];
 
     // 🔍 Fetch upcoming jobs
     const jobs = await Booking.find({
       "assignment.technician": technician._id,
       status: "confirmed",
-      "schedule.date": { $gte: today }
+      "schedule.date": todayStr
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 });
 
@@ -354,7 +346,6 @@ exports.startJob = async (req, res) => {
   }
 };
 
-
 // ===============================
 // 6️⃣ UPDATE CHECKLIST
 // ===============================
@@ -428,9 +419,6 @@ exports.uploadPhotos = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-
 
 // ===============================
 // 9️⃣ COMPLETE JOB

@@ -19,6 +19,8 @@ const slotRoutes = require("./modules/vanSlot/slot.routes");
 const scheduleRoutes = require('./modules/schedule/schedule.routes')
 const userVehicleRoutes = require('./modules/customers/vehicle/customerVehicle.routes')
 const customerSaleRoutes = require('./modules/customerSale/customerSale.route')
+const DriverAppRoutes = require('./modules/driver/driverApp/driverApp.route')
+
 
 const app = express();
 
@@ -48,6 +50,7 @@ app.use("/api/v1/slots", slotRoutes);
 app.use("/api/v1/user/vehicle", userVehicleRoutes);
 app.use("/api/v1/customer-sales-data", customerSaleRoutes);
 app.use("/api/v1/technician-app", require("./modules/technician/technicianApp/technicianApp.routes"));
+app.use("/api/v1/driver-app", DriverAppRoutes);
 
 app.get('/', (req, res) => {
   res.send('Jetour Backend Running 🚀');

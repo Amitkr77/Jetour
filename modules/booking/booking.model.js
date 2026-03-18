@@ -99,17 +99,11 @@ const bookingSchema = new mongoose.Schema(
         type: Boolean,
         default: false
       },
-      technician_started: {
-        type: Boolean,
-        default: false
-      },
-      technician_started_at: {
-        type: Date
-      },
+      
       notes: {
         type: String
       },
-      trip_status: {
+      status: {
         type: String,
         enum: ["pending", "on_the_way", "arrived", "completed"],
         default: "pending"
@@ -199,6 +193,7 @@ const bookingSchema = new mongoose.Schema(
         "pending",
         "paid",
         "confirmed",
+        "driver_on_the_way",
         "in-progress",
         "completed",
         "cancelled",
