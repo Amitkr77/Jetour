@@ -103,7 +103,7 @@ exports.updateDriver = [
 
       const updateData = {
         ...req.body,
-        ...(req.file && { image: req.file.path }) 
+        ...(req.file && { image: req.file.path })
       };
 
       const driver = await driverService.updateDriver(req.params.id, updateData);
@@ -206,7 +206,7 @@ exports.verifyDriver = async (req, res, next) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, driver.password);
+    const isMatch = password === driver.password
 
     if (!isMatch) {
       return res.status(401).json({
