@@ -537,43 +537,69 @@ exports.updateChecklist = async (req, res) => {
 exports.uploadPhotos = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { type } = req.body;
+    const { type, category } = req.body;
     const technicianId = req.user?.id || req.body.technicianId;
+
+
+    if (!technicianId) {
+      return res.status(400).json({
+        success: false,
+        message: "Technician ID is required"
+      });
+    }
+
+    // 🔍 Find technician by custom ID
+    const technician = await Technician.findOne({ technician_id: technicianId });
+
+    if (!technician) {
+      return res.status(404).json({
+        success: false,
+        message: "Technician not found"
+      });
+    }
 
     const booking = await Booking.findById(bookingId);
 
     if (!booking)
       return res.status(404).json({ message: "Booking not found" });
 
-    if (!booking.assignment.technician ||
-      booking.assignment.technician.toString() !== technicianId)
+    if (
+      !booking.assignment.technician ||
+      booking.assignment.technician.toString() !== technician._id.toString()
+    ) {
       return res.status(403).json({ message: "Unauthorized" });
+    }
 
     if (!req.files || req.files.length === 0)
       return res.status(400).json({ message: "No images uploaded" });
 
-    // Extract cloudinary URLs
-    const imageUrls = req.files.map(file => file.path);
-
-    if (type === "before") {
-      booking.service_progress.before_photos.push(...imageUrls);
-    }
-    else if (type === "after") {
-      booking.service_progress.after_photos.push(...imageUrls);
-    }
-    else {
+    // ✅ Validate inputs
+    if (!["before", "after"].includes(type)) {
       return res.status(400).json({ message: "Invalid photo type" });
     }
 
+    if (!["interior", "exterior"].includes(category)) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
+
+    const imageUrls = req.files.map(file => file.path);
+
+    // ===============================
+    // ✅ Push to correct bucket
+    // ===============================
+    booking.service_progress[type][category].push(...imageUrls);
+
     await booking.save();
 
-    res.json({
+    return res.json({
       message: "Photos uploaded successfully",
+      type,
+      category,
       images: imageUrls
     });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 

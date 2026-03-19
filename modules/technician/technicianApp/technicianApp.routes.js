@@ -3,6 +3,7 @@ const router = express.Router();
 const technicianController = require("./technicianApp.controller");
 const createUploader = require('../../../utils/uploadImage');
 const parser = createUploader('booking/serivice');
+
 // const authMiddleware = require("../middlewares/auth");
 // const roleMiddleware = require("../middlewares/role");
 
@@ -20,7 +21,7 @@ router.get("/job/:bookingId/technicians/:technicianId", technicianController.get
 
 router.patch("/start/:bookingId", technicianController.startJob);
 router.patch("/checklist/:bookingId", technicianController.updateChecklist);
-router.post("/upload-photos/:bookingId", technicianController.uploadPhotos);
+router.post("/upload-photos/:bookingId", parser.array("images", 10), technicianController.uploadPhotos);
 router.patch("/complete/:bookingId/:technicianId", technicianController.completeJob);
 
 module.exports = router;

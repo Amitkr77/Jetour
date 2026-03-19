@@ -5,7 +5,7 @@ const createUploader = require('../../utils/uploadImage');
 const parser = createUploader('vehicle');
 // Create vehicle with optional image upload
 exports.createVehicle = [
-  parser.single('vehicle_image'), // if you send file
+  parser.single('vehicle_image'), 
   async (req, res, next) => {
     try {
       const { error } = validation.createVehicleSchema.validate(req.body);

@@ -65,8 +65,15 @@ const bookingSchema = new mongoose.Schema(
       },
       pre_inspection: { type: Boolean, default: false },
       checklist_completed: { type: Boolean, default: false },
-      before_photos: [String],
-      after_photos: [String],
+      before_photos: {
+        interior: [String],
+        exterior: [String]
+      },
+
+      after_photos: {
+        interior: [String],
+        exterior: [String]
+      },
       inventory_updated: { type: Boolean, default: false },
       summary: String,
       next_service_recommendation: String,
