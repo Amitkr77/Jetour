@@ -26,6 +26,8 @@ exports.approveRequest = async (requestId) => {
   const techInventory = await TechnicianInventory.findOne({ technician: request.technician });
 
   if (techInventory) {
+    console.log(techInventory);
+    
     // Update existing items or add new ones
     for (const item of request.items) {
       const existingItem = techInventory.inventory.find(i => i.item.toString() === item.item.toString());

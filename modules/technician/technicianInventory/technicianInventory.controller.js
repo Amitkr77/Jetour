@@ -63,7 +63,71 @@ const getTechnicianInventoryByTechnicianId = async (req, res) => {
     }
 };
 
+// Update technician inventory
+const updateTechnicianInventory = async (req, res) => {
+    try {
+        const { technicianId } = req.params;
+        const { inventory } = req.body;
+        // inventory = [{ item: ObjectId, quantity: Number }]
+
+        // Validate input
+        if (!Array.isArray(inventory)) {
+            return res.status(400).json({
+                success: false,
+                message: "Inventory must be an array"
+            });
+        }
+
+        // Find existing inventory
+        let technicianInventory = await TechnicianInventory.findOne({ technician: technicianId });
+
+        if (!technicianInventory) {
+            return res.status(404).json({
+                success: false,
+                message: 'Technician inventory not found'
+            });
+
+        } else {
+            // Update existing inventory
+            technicianInventory.inventory = inventory;
+        }
+
+        await technicianInventory.save();
+
+        // Populate for response
+        const populatedData = await TechnicianInventory.findById(technicianInventory._id)
+            .populate('inventory.item', 'name')
+            .lean();
+
+        // Format response
+        const formattedData = {
+            inventory: populatedData.inventory.map(item => ({
+                _id: item.item?._id,
+                name: item.item?.name,
+                quantity: item.quantity
+            })),
+            created_at: populatedData.created_at,
+            updated_at: populatedData.updated_at,
+            __v: populatedData.__v
+        };
+
+        res.status(200).json({
+            success: true,
+            message: "Technician inventory updated successfully",
+            data: formattedData
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
+    }
+};
+
 module.exports = {
     getAllTechnicianInventories,
-    getTechnicianInventoryByTechnicianId
+    getTechnicianInventoryByTechnicianId,
+    updateTechnicianInventory
 };

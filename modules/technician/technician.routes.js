@@ -6,7 +6,10 @@ const inventoryController = require('./technicianInventory/technicianInventory.c
 // All routes protected
 router.post('/', controller.createTechnician);
 router.get('/', controller.verifyTechnician, controller.getAllTechnicians);
+
 router.get('/inventory/:technicianId', inventoryController.getTechnicianInventoryByTechnicianId);
+router.patch('/inventory/:technicianId', inventoryController.updateTechnicianInventory);
+
 router.get('/:id', controller.getTechnicianDetail);
 router.put('/:id', controller.updateTechnician);
 router.delete('/:id', controller.deleteTechnician);
