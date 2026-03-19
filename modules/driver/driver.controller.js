@@ -230,13 +230,15 @@ exports.verifyDriver = async (req, res, next) => {
       success: true,
       message: 'Driver verified successfully',
       token,
-      data: {
-        // _id: driver._id,
-        driver_id: driver.driver_id,
-        name: driver.name,
-        // contact: driver.contact,
-        // status: driver.status
-      }
+      driver,
+      // data: {
+      //   // _id: driver._id,
+      //   // driver_id: driver.driver_id,
+      //   // name: driver.name,
+      //   // driver
+      //   // contact: driver.contact,
+      //   // status: driver.status
+      // }
     });
 
   } catch (err) {
