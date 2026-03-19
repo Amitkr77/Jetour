@@ -264,7 +264,7 @@ exports.getMyJob = async (req, res) => {
     // ===============================
     const bookings = await Booking.find({
       "assignment.technician": technician._id,
-      status: { $in: ["confirmed", "completed"] }
+      status: { $in: ["confirmed", "completed", "in-progress"] }
     })
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
@@ -299,7 +299,7 @@ exports.getMyJob = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Jobs fetched successfully",
-      status_code: 200,
+      total: formattedJobs.length,
       data: formattedJobs
     });
 
