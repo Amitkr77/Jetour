@@ -197,8 +197,14 @@ exports.createAdminBooking = async (req, res) => {
         status: "not_started",
         pre_inspection: false,
         checklist_completed: false,
-        before_photos: [],
-        after_photos: [],
+        before_photos: {                  // before service photos
+          interior: [],                   // interior photos
+          exterior: []                    // exterior photos
+        },
+        after_photos: {                   // after service photos
+          interior: [],                   // interior photos
+          exterior: []                    // exterior photos
+        },
         inventory_updated: false,
         summary: "",
         next_service_recommendation: "",
@@ -612,8 +618,14 @@ exports.confirmBookingPayment = async (req, res) => {
       status: "not_started",
       pre_inspection: false,
       checklist_completed: false,
-      before_photos: [],
-      after_photos: [],
+      before_photos: {                  // before service photos
+        interior: [],                   // interior photos
+        exterior: []                    // exterior photos
+      },
+      after_photos: {                   // after service photos
+        interior: [],                   // interior photos
+        exterior: []                    // exterior photos
+      },
       inventory_updated: false,
       summary: "",
       next_service_recommendation: "",
