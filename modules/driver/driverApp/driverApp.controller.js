@@ -2,6 +2,18 @@
 const Booking = require("../../booking/booking.model")
 const Driver = require("../../driver/driver.model")
 
+function formatTime(time) {
+    if (!time) return null;
+
+    const [hour, minute] = time.split(":");
+    let h = parseInt(hour);
+    const ampm = h >= 12 ? "PM" : "AM";
+
+    h = h % 12 || 12;
+
+    return `${h}:${minute} ${ampm}`;
+}
+
 exports.getDashboard = async (req, res) => {
     try {
         const driverId = req.user?.id || req.params.driverId;
@@ -84,26 +96,69 @@ exports.getAssignments = async (req, res) => {
         const driverId = req.user?.id || req.params.driverId;
 
         if (!driverId) {
-            return res.status(400).json({ message: "Driver ID is required" });
+            return res.status(400).json({
+                success: false,
+                message: "Driver ID is required"
+            });
         }
 
         const driver = await Driver.findOne({ driver_id: driverId });
 
         if (!driver) {
-            return res.status(404).json({ message: "Driver not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Driver not found"
+            });
         }
 
         const bookings = await Booking.find({
             "assignment.driver": driver._id
         })
             .populate("assignment.technician", "name technician_id contact")
-            .populate("assignment.driver", "name driver_id ")
+            .populate("assignment.driver", "name driver_id")
             .sort({ "schedule.date": 1 });
 
-        res.json(bookings);
+        const filteredData = bookings.map(b => ({
+            booking_id: b.booking_id,
+
+            package_name: b.package?.name,
+
+            schedule_time: formatTime(b.schedule?.start_time),
+
+            customer_location: {
+                lat: b.address?.lat || null,
+                lng: b.address?.lng || null
+            },
+
+            technician: {
+                name: b.assignment?.technician?.name,
+                technician_id: b.assignment?.technician?.technician_id,
+                contact: b.assignment?.technician?.contact
+            },
+
+            driver: {
+                name: b.assignment?.driver?.name,
+                id: b.assignment?.driver?.driver_id
+            },
+            status: b.status === "driver_on_the_way"
+                ? "active"
+                : b.status === "confirmed"
+                    ? "scheduled"
+                    : b.status,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "Assignments fetched successfully",
+            total: filteredData.length,
+            data: filteredData
+        });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
     }
 };
 
