@@ -249,9 +249,75 @@ exports.getJobDetail = async (req, res) => {
   }
 };
 
+// exports.getMyJob = async (req, res) => {
+//   try {
+//     const technicianId = req.params.technicianId;
+
+//     if (!technicianId) {
+//       return res.status(400).json({ message: "Technician ID is required" });
+//     }
+
+//     const technician = await Technician.findOne({ technician_id: technicianId });
+
+//     // ===============================
+//     // 1️⃣ Fetch Jobs (assigned to technician)
+//     // ===============================
+//     const bookings = await Booking.find({
+//       "assignment.technician": technician._id,
+//       status: { $in: ["confirmed", "completed", "in-progress"] }
+//     })
+//       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
+//       .lean();
+
+
+//     // ===============================
+//     // 2️⃣ Format Response Data
+//     // ===============================
+//     const formattedJobs = bookings.map((booking) => ({
+//       package_name: booking.package?.name || null,
+//       vehicle_name: booking.vehicle?.vehicle_model || null,
+//       status:
+//         booking?.service_progress?.status === "in_progress"
+//           ? "in_progress"
+//           : booking.status === "confirmed"
+//             ? "scheduled"
+//             : booking.status,
+//       booking_time: booking.schedule?.start_time || null,
+//       booking_date: booking.schedule.date,
+//       booking_id: booking._id,
+//       customer_details: {
+//         name: booking.customer?.name || null,
+//         country_code: booking.customer?.country_code,
+//         contact: booking.customer?.phone || null
+//       }
+//     }));
+
+
+//     // ===============================
+//     // 3️⃣ Final Response
+//     // ===============================
+//     return res.status(200).json({
+//       success: true,
+//       message: "Jobs fetched successfully",
+//       total: formattedJobs.length,
+//       data: formattedJobs
+//     });
+
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message
+//     });
+//   }
+// };
+// ===============================
+// 5️⃣ START JOB
+// ===============================
+
 exports.getMyJob = async (req, res) => {
   try {
     const technicianId = req.params.technicianId;
+    const { status } = req.query;
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -259,42 +325,76 @@ exports.getMyJob = async (req, res) => {
 
     const technician = await Technician.findOne({ technician_id: technicianId });
 
+    if (!technician) {
+      return res.status(404).json({ message: "Technician not found" });
+    }
+
     // ===============================
-    // 1️⃣ Fetch Jobs (assigned to technician)
+    // 1️⃣ Status Filter Logic
     // ===============================
-    const bookings = await Booking.find({
-      "assignment.technician": technician._id,
-      status: { $in: ["confirmed", "completed", "in-progress"] }
-    })
+    let queryFilter = {
+      "assignment.technician": technician._id
+    };
+
+    switch (status) {
+      case "confirmed":
+        queryFilter.status = { $in: ["confirmed"] };
+        break;
+
+      case "completed":
+        queryFilter.status = { $in: ["completed"] };
+        break;
+
+      case "in-progress":
+        queryFilter.$or = [
+          { status: { $in: ["in-progress", "driver_on_the_way", "driver_reached"] } },
+          { "service_progress.status": "in_progress" }
+        ];
+        break;
+
+      default:
+        // Default → show only confirmed (upcoming jobs)
+        queryFilter.status = { $in: ["confirmed"] };
+    }
+
+    // ===============================
+    // 2️⃣ Fetch Jobs
+    // ===============================
+    const bookings = await Booking.find(queryFilter)
       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
       .lean();
 
+    // ===============================
+    // 3️⃣ Format Response Data
+    // ===============================
+    const formattedJobs = bookings.map((booking) => {
+      let finalStatus;
 
-    // ===============================
-    // 2️⃣ Format Response Data
-    // ===============================
-    const formattedJobs = bookings.map((booking) => ({
-      package_name: booking.package?.name || null,
-      vehicle_name: booking.vehicle?.vehicle_model || null,
-      status:
-        booking?.service_progress?.status === "in_progress"
-          ? "in_progress"
-          : booking.status === "confirmed"
-            ? "scheduled"
-            : booking.status,
-      booking_time: booking.schedule?.start_time || null,
-      booking_date: booking.schedule.date,
-      booking_id: booking._id,
-      customer_details: {
-        name: booking.customer?.name || null,
-        country_code: booking.customer?.country_code,
-        contact: booking.customer?.phone || null
+      if (booking?.service_progress?.status === "in_progress") {
+        finalStatus = "in_progress";
+      } else if (booking.status === "confirmed") {
+        finalStatus = "scheduled";
+      } else {
+        finalStatus = booking.status;
       }
-    }));
 
+      return {
+        package_name: booking.package?.name || null,
+        vehicle_name: booking.vehicle?.vehicle_model || null,
+        status: finalStatus,
+        booking_time: booking.schedule?.start_time || null,
+        booking_date: booking.schedule?.date || null,
+        booking_id: booking._id,
+        customer_details: {
+          name: booking.customer?.name || null,
+          country_code: booking.customer?.country_code || null,
+          contact: booking.customer?.phone || null
+        }
+      };
+    });
 
     // ===============================
-    // 3️⃣ Final Response
+    // 4️⃣ Final Response
     // ===============================
     return res.status(200).json({
       success: true,
@@ -310,14 +410,49 @@ exports.getMyJob = async (req, res) => {
     });
   }
 };
+
+
+// exports.startJob = async (req, res) => {
+//   try {
+//     const { bookingId } = req.params;
+//     const technicianId = req.body.technicianId;
+
+
+//     if (!technicianId) {
+//       return res.status(400).json({ message: "Technician ID is required" });
+//     }
+
+//     const technician = await Technician.findOne({ technician_id: technicianId });
+
+//     const booking = await Booking.findById(bookingId);
+
+//     if (!booking)
+//       return res.status(404).json({ message: "Booking not found" });
+
+//     if (booking.assignment.technician.toString() !== technician._id.toString())
+//       return res.status(403).json({ message: "Unauthorized" });
+
+//     booking.status = "in-progress"
+//     booking.service_progress.status = "in_progress";
+//     booking.service_progress.started_at = new Date();
+
+//     await booking.save();
+
+//     res.json({ success: true, message: "Job started", booking });
+
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
 // ===============================
-// 5️⃣ START JOB
+// 6️⃣ UPDATE CHECKLIST
 // ===============================
+
 exports.startJob = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const technicianId = req.body.technicianId;
-
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -325,30 +460,52 @@ exports.startJob = async (req, res) => {
 
     const technician = await Technician.findOne({ technician_id: technicianId });
 
+    if (!technician) {
+      return res.status(404).json({ message: "Technician not found" });
+    }
+
     const booking = await Booking.findById(bookingId);
 
-    if (!booking)
+    if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
+    }
 
-    if (booking.assignment.technician.toString() !== technician._id.toString())
+    // ✅ Authorization check
+    if (booking.assignment.technician.toString() !== technician._id.toString()) {
       return res.status(403).json({ message: "Unauthorized" });
+    }
 
-    booking.status = "in-progress"
+    // ===============================
+    // 🚫 Restrict invalid transition
+    // ===============================
+    if (booking.status !== "driver_reached") {
+      return res.status(400).json({
+        message: `Job cannot be started. Current status is '${booking.status}'. It must be 'driver_reached'.`
+      });
+    }
+
+    // ===============================
+    // ✅ Valid transition
+    // ===============================
+    const now = new Date();
+
+    booking.status = "in-progress";
     booking.service_progress.status = "in_progress";
-    booking.service_progress.started_at = new Date();
+    booking.service_progress.started_at = now;
 
     await booking.save();
 
-    res.json({ success: true, message: "Job started", booking });
+    return res.json({
+      success: true,
+      message: "Job started successfully",
+      booking
+    });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 
-// ===============================
-// 6️⃣ UPDATE CHECKLIST
-// ===============================
 exports.updateChecklist = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -458,6 +615,7 @@ exports.completeJob = async (req, res) => {
 
     // sp.status = "completed";
     // sp.completed_at = new Date();
+    booking.service_progress.completed_at = new Date();
     booking.service_progress.status = "completed";
     booking.service_progress.completed_at = new Date();
     booking.status = "completed";

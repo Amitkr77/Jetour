@@ -185,7 +185,62 @@ exports.createShift = async (req, res) => {
 exports.startTrip = async (req, res) => {
     try {
         const { bookingId } = req.params;
+        const driverId = req.user?.id || req.params.driverId;
 
+        if (!driverId) {
+            return res.status(400).json({ message: "Driver ID is required" });
+        }
+
+        const driver = await Driver.findOne({ driver_id: driverId });
+
+        if (!driver) {
+            return res.status(404).json({ message: "Driver not found" });
+        }
+
+        const booking = await Booking.findById(bookingId);
+
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+
+        // ✅ Authorization check
+        if (booking.assignment.driver.toString() !== driver._id.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        // ===============================
+        // 🚫 Restrict invalid transition
+        // ===============================
+        if (booking.status !== "confirmed") {
+            return res.status(400).json({
+                message: `Trip cannot be started. Current status is '${booking.status}'. It must be 'confirmed'.`
+            });
+        }
+
+        // ===============================
+        // ✅ Valid transition
+        // ===============================
+        const now = new Date();
+
+        booking.status = "driver_on_the_way";
+        booking.trip_details.status = "driver_on_the_way";
+        booking.trip_details.van_started_at = now;
+
+        await booking.save();
+
+        return res.json({
+            success: true,
+            message: "Trip started successfully",
+            booking
+        });
+
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
+};
+exports.completeTrip = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
         const driverId = req.user?.id || req.params.driverId;
 
         if (!driverId) {
@@ -205,37 +260,13 @@ exports.startTrip = async (req, res) => {
         if (booking.assignment.driver.toString() !== driver._id.toString())
             return res.status(403).json({ message: "Unauthorized" });
 
-        booking.status = "driver_on_the_way";
-        booking.trip_details.status = "on_the_way"
-
-        await booking.save();
-
-        res.json({ message: "Trip started", booking });
-
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-exports.completeTrip = async (req, res) => {
-    try {
-        const { bookingId } = req.params;
-        const driverId = req.user.id;
-
-        const booking = await Booking.findById(bookingId);
-
-        if (!booking)
-            return res.status(404).json({ message: "Booking not found" });
-
-        if (booking.assignment.driver.toString() !== driverId)
-            return res.status(403).json({ message: "Unauthorized" });
-
         booking.trip_details = {
             ...booking.trip_details,
-            status: "completed",
+            status: "driver_reached",
             distance: req.body.distance,
             duration: req.body.duration,
             arrival_confirmed: true,
+            arrived_at: new Date(),
             vehicle_parked: true,
             notes: req.body.notes
         };
@@ -256,11 +287,21 @@ exports.completeTrip = async (req, res) => {
 
 exports.getHistory = async (req, res) => {
     try {
-        const driverId = req.user.id;
+        const driverId = req.user?.id || req.params.driverId;
+
+        if (!driverId) {
+            return res.status(400).json({ message: "Driver ID is required" });
+        }
+
+        const driver = await Driver.findOne({ driver_id: driverId });
+
+        if (!driver) {
+            return res.status(404).json({ message: "Driver not found" });
+        }
 
         const history = await Booking.find({
-            "assignment.driver": driverId,
-            "trip_details.trip_status": "completed"
+            "assignment.driver": driver._id,
+            "trip_details.trip_status": "driver_reached"
         }).sort({ updatedAt: -1 });
 
         res.json(history);

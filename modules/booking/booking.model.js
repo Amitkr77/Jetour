@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
       },
       name: { type: String, },
       email: { type: String },
-      gender: { type: String, enum: ["Male", "Female","Other"] },
+      gender: { type: String, enum: ["Male", "Female", "Other"] },
       phone: { type: String, required: true },
       country_code: { type: String, required: true }
     },
@@ -99,13 +99,13 @@ const bookingSchema = new mongoose.Schema(
         type: Boolean,
         default: false
       },
-      
+
       notes: {
         type: String
       },
       status: {
         type: String,
-        enum: ["pending", "on_the_way", "arrived", "completed"],
+        enum: ["pending", "driver_on_the_way", "driver_reached"],
         default: "pending"
       }
     },
@@ -194,6 +194,7 @@ const bookingSchema = new mongoose.Schema(
         "paid",
         "confirmed",
         "driver_on_the_way",
+        "driver_reached",
         "in-progress",
         "completed",
         "cancelled",
