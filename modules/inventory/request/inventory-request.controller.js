@@ -103,14 +103,21 @@ exports.rejectInventoryRequest = async (req, res) => {
   }
 };
 
+
 exports.getAllRequests = async (req, res) => {
   try {
-    const requests = await InventoryRequestService.getAllRequests();
+    const { page = 1, limit = 10, status, technician } = req.query;
+
+    const result = await InventoryRequestService.getAllRequests({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+      technician
+    });
 
     res.status(200).json({
       success: true,
-      count: requests.length,
-      data: requests
+      ...result
     });
 
   } catch (error) {

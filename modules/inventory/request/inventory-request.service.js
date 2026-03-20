@@ -118,18 +118,46 @@ exports.rejectRequest = async (requestId, itemId, reason) => {
 
 // Get all requests (admin)
 
-exports.getAllRequests = async () => {
-  const requests = await InventoryRequest.find()
+exports.getAllRequests = async ({ page, limit, status, technician }) => {
+  const skip = (page - 1) * limit;
+
+  // Build filter
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  let requestsQuery = InventoryRequest.find(filter)
     .populate("technician", "technician_id name")
     .populate("items.item", "name quantity")
     .sort({ createdAt: -1 });
 
+  const requests = await requestsQuery;
+
+  // Filter by technician (after populate)
+  let filteredRequests = requests;
+
+  if (technician) {
+    const search = technician.toLowerCase();
+
+    filteredRequests = requests.filter(req =>
+      req.technician &&
+      (
+        req.technician.name?.toLowerCase().includes(search) ||
+        req.technician.technician_id?.toLowerCase().includes(search)
+      )
+    );
+  }
+
+  // Format data
   const formatted = [];
 
-  for (const req of requests) {
+  for (const req of filteredRequests) {
     for (const item of req.items) {
       formatted.push({
         request_id: req._id,
+
         technician: {
           name: req.technician?.name,
           id: req.technician?.technician_id
@@ -139,7 +167,6 @@ exports.getAllRequests = async () => {
         item_id: item._id,
 
         requested_qty: item.quantity,
-
         company_qty: item.item?.quantity || 0,
 
         request_date: req.requested_at,
@@ -152,8 +179,20 @@ exports.getAllRequests = async () => {
     }
   }
 
-  return formatted;
+  // Pagination on formatted data
+  const total = formatted.length;
+
+  const paginatedData = formatted.slice(skip, skip + limit);
+
+  return {
+    count: paginatedData.length,
+    total,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    data: paginatedData
+  };
 };
+
 // Get technician requests
 exports.getTechnicianRequests = async (technicianId) => {
   return InventoryRequest.find({ technician: technicianId })
