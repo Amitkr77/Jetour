@@ -142,7 +142,7 @@ exports.getTechnicianRequests = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Technician requests fetched successfully',
+      count: requests.length,
       data: requests
     });
 
@@ -151,7 +151,6 @@ exports.getTechnicianRequests = async (req, res, next) => {
     next(error);
   }
 };
-
 exports.removeItemFromRequest = async (req, res) => {
   try {
     const { requestId, itemId } = req.params;

@@ -195,9 +195,41 @@ exports.getAllRequests = async ({ page, limit, status, technician }) => {
 
 // Get technician requests
 exports.getTechnicianRequests = async (technicianId) => {
-  return InventoryRequest.find({ technician: technicianId })
+  const requests = await InventoryRequest.find({
+    technician: technicianId
+  })
+    .populate("technician", "technician_id name")
     .populate("items.item", "name quantity")
-    .sort({ created_at: -1 });
+    .sort({ createdAt: -1 });
+
+  if (!requests.length) return [];
+
+  const technicianData = {
+    technicianId: requests[0].technician?._id,
+    name: requests[0].technician?.name,
+    id: requests[0].technician?.technician_id
+  };
+
+  const items = [];
+
+  for (const req of requests) {
+    for (const item of req.items) {
+
+      // ✅ FILTER HERE (item-level status)
+      if (item.status !== "pending") continue;
+
+      items.push({
+        item_id: item._id,
+        part: item.item?.name || "Unknown",
+        requested_qty: item.quantity,
+      });
+    }
+  }
+
+  return {
+    technician: technicianData,
+    items
+  };
 };
 
 exports.removeItemFromRequest = async (requestId, itemId, technicianId) => {
