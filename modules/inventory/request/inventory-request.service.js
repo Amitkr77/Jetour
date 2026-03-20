@@ -136,6 +136,7 @@ exports.getAllRequests = async () => {
         },
 
         part: item.item?.name || "Unknown",
+        item_id: item._id,
 
         requested_qty: item.quantity,
 
@@ -180,7 +181,7 @@ exports.removeItemFromRequest = async (requestId, itemId, technicianId) => {
   }
 
   request.items.pull({ _id: itemId });
-  
+
   // If no items left → delete entire request
   if (request.items.length === 0) {
     await request.deleteOne();
