@@ -117,7 +117,6 @@ exports.rejectRequest = async (requestId, itemId, reason) => {
 };
 
 // Get all requests (admin)
-
 exports.getAllRequests = async ({ page, limit, status, technician }) => {
   const skip = (page - 1) * limit;
 
@@ -159,6 +158,7 @@ exports.getAllRequests = async ({ page, limit, status, technician }) => {
         request_id: req._id,
 
         technician: {
+          technicianId: req.technician._id,
           name: req.technician?.name,
           id: req.technician?.technician_id
         },

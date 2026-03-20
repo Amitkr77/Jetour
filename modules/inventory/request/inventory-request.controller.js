@@ -3,7 +3,6 @@ const InventoryRequestService = require("./inventory-request.service");
 // Technician creates request
 exports.createInventoryRequest = async (req, res) => {
   try {
-
     // 🔥 Take from middleware if exists, otherwise from body
     const technicianId = req.user?._id || req.body.technicianId;
 
