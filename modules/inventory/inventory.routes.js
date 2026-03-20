@@ -20,8 +20,11 @@ router.get("/all-request", request.getAllRequests);
 router.post("/request", request.createInventoryRequest);
 
 // Admin actions
-router.put("/admin/request/approve/:request_id", request.approveInventoryRequest);
-router.put("/admin/request/reject/:request_id", request.rejectInventoryRequest);
+// router.put("/admin/request/approve/:request_id", request.approveInventoryRequest);
+router.patch("/admin/request/:requestId/item/:itemId/approve", request.approveInventoryRequest);
+router.patch("/admin/request/:requestId/item/:itemId/reject", request.rejectInventoryRequest);
+router.delete("/request/:requestId/item/:itemId", request.removeItemFromRequest);
+router.delete("/request/:requestId", request.deleteInventoryRequest);
 
 // Inventory detail
 router.get("/:id", controller.getInventoryDetail);

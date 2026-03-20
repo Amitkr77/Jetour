@@ -574,7 +574,7 @@ exports.uploadPhotos = async (req, res) => {
       return res.status(400).json({ message: "No images uploaded" });
 
     // ✅ Validate inputs
-    if (!["before", "after"].includes(type)) {
+    if (!["before_photos", "after_photos"].includes(type)) {
       return res.status(400).json({ message: "Invalid photo type" });
     }
 

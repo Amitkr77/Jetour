@@ -44,10 +44,18 @@ exports.createInventoryRequest = async (req, res) => {
 // Admin approve
 exports.approveInventoryRequest = async (req, res) => {
   try {
-    const { request_id } = req.params;
+    const { requestId, itemId } = req.params;
+
+    if (!itemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Item ID is required"
+      });
+    }
 
     const request = await InventoryRequestService.approveRequest(
-      request_id
+      requestId,
+      itemId
     );
 
     res.json({
@@ -66,11 +74,19 @@ exports.approveInventoryRequest = async (req, res) => {
 // Admin reject
 exports.rejectInventoryRequest = async (req, res) => {
   try {
-    const { request_id } = req.params;
+    const { requestId, itemId } = req.params;
     const { reason } = req.body;
 
+    if (!itemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Item ID is required"
+      });
+    }
+
     const request = await InventoryRequestService.rejectRequest(
-      request_id,
+      requestId,
+      itemId,
       reason
     );
 
@@ -126,6 +142,53 @@ exports.getTechnicianRequests = async (req, res, next) => {
 
   } catch (error) {
     console.error(error);
-    next(error); 
+    next(error);
+  }
+};
+
+exports.removeItemFromRequest = async (req, res) => {
+  try {
+    const { requestId, itemId } = req.params;
+    const { technicianId } = req.user?._id || req.body
+
+    const result = await InventoryRequestService.removeItemFromRequest(
+      requestId,
+      itemId,
+      technicianId
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.deleteInventoryRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { technicianId } = req.user?._id || req.body
+
+    const result = await InventoryRequestService.deleteRequest(
+      requestId,
+      technicianId
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
 };

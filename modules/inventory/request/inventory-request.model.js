@@ -1,20 +1,24 @@
 const mongoose = require("mongoose");
 
-const requestItemSchema = new mongoose.Schema(
-  {
-    item: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Inventory",
-      required: true
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
-    }
+const requestItemSchema = new mongoose.Schema({
+  item: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Inventory",
+    required: true
   },
-  { _id: false }
-);
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending"
+  },
+  approved_at: Date,
+  rejection_reason: String
+}, { _id: true });
 
 const inventoryRequestSchema = new mongoose.Schema(
   {
