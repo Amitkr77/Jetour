@@ -897,7 +897,7 @@ exports.getConfirmedBookingsByCustomer = async (req, res) => {
     // ✅ Step 2: Use _id in booking query
     const bookings = await Booking.find({
       "customer.customer_id": customer._id,
-      status: "confirmed"
+      "trip_details.status": "driver_on_the_way"
     })
       .populate("assignment.technician", "name contact technician_id")
       .populate("assignment.driver", "name contact driver_id")
