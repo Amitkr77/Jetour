@@ -873,6 +873,54 @@ exports.getCustomerBookings = async (req, res) => {
   }
 };
 
+exports.getConfirmedBookingsByCustomer = async (req, res) => {
+  try {
+    const { customer_id } = req.params; // this is CUST-xxxxx
+
+    if (!customer_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required"
+      });
+    }
+
+    // ✅ Step 1: Find customer using custom ID
+    const customer = await CustomerModel.findOne({ id: customer_id });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    // ✅ Step 2: Use _id in booking query
+    const bookings = await Booking.find({
+      "customer.customer_id": customer._id,
+      status: "confirmed"
+    })
+      .populate("assignment.technician", "name contact technician_id")
+      .populate("assignment.driver", "name contact driver_id")
+      .populate("assignment.service_van", "registration_number")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      total: bookings.length,
+      bookings
+    });
+
+  } catch (error) {
+    console.error("Error fetching confirmed bookings:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
 exports.cancelBooking = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();

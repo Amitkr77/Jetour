@@ -9,6 +9,7 @@ router.post("/customer", bookingController.createCustomerBooking);
 router.post("/admin", bookingController.createAdminBooking);
 router.patch("/admin/:id", bookingController.updateAdminBooking);
 router.get("/customer", bookingController.getCustomerBookings);
+router.get("/customer/:customer_id/confirmed", bookingController.getConfirmedBookingsByCustomer);
 router.get("/filter", bookingController.getBookingByFilter);
 router.get("/:booking_id", bookingController.getBookingById);
 router.post("/customer/confirm", bookingController.confirmBookingPayment);
