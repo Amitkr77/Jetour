@@ -20,16 +20,16 @@ const scheduleRoutes = require('./modules/schedule/schedule.routes')
 const userVehicleRoutes = require('./modules/customers/vehicle/customerVehicle.routes')
 const customerSaleRoutes = require('./modules/customerSale/customerSale.route')
 const DriverAppRoutes = require('./modules/driver/driverApp/driverApp.route')
-
+const tripRoutes = require('./modules/trip/trip.route');
 
 const app = express();
 
 app.use(helmet());
 app.use(
   cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-})
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  })
 ); app.use(morgan('dev'));
 app.use(express.json());
 
@@ -50,6 +50,7 @@ app.use("/api/v1/user/vehicle", userVehicleRoutes);
 app.use("/api/v1/customer-sales-data", customerSaleRoutes);
 app.use("/api/v1/technician-app", require("./modules/technician/technicianApp/technicianApp.routes"));
 app.use("/api/v1/driver-app", DriverAppRoutes);
+app.use("/api/v1/trip", tripRoutes);
 
 app.get('/', (req, res) => {
   res.send('Jetour Backend Running 🚀');
