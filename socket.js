@@ -1,6 +1,7 @@
 // socket.js
 const { Server } = require("socket.io");
-const { redisClient } = require("./redis");
+// const { redisClient } = require("./redis");
+const Trip = require('./modules/trip/trip.model')
 
 let io;
 
@@ -17,19 +18,20 @@ const initSocket = (server) => {
             try {
                 socket.join(`trip:${tripId}`);
 
-                const tripData = await redisClient.get(`trip:${tripId}`);
-                if (tripData) {
-                    const trip = JSON.parse(tripData);
-                    socket.emit("trip_data", {
-                        customerLocation: trip.customerLocation
-                    });
-                } else {
-                    socket.emit("error", { message: "Trip not found" });
+                const trip = await Trip.findOne({ tripId });
+
+                if (!trip) {
+                    return socket.emit("error", { message: "Trip not found" });
                 }
 
-                const location = await redisClient.get(`driver:${driverId}:location`);
-                if (location) {
-                    socket.emit("receive_location", JSON.parse(location));
+                // Send trip data to client
+                socket.emit("trip_data", {
+                    customerLocation: trip.customerLocation
+                });
+
+                // Send last known driver location if exists
+                if (trip.driverLocation) {
+                    socket.emit("receive_location", trip.driverLocation);
                 }
 
                 console.log(`Joined trip:${tripId}`);
@@ -43,34 +45,36 @@ const initSocket = (server) => {
         // Driver location update
         socket.on("location_update", async ({ tripId, driverId, lat, lng }) => {
             try {
-                const tripData = await redisClient.get(`trip:${tripId}`);
-                if (!tripData) return;
+                // Rate limit — only allow update every 2 seconds per driver
+                // const now = Date.now();
+                // const last = lastUpdateTime.get(driverId) || 0;
+                // if (now - last < 2000) return;
+                // lastUpdateTime.set(driverId, now);
 
-                const trip = JSON.parse(tripData);
+                const trip = await Trip.findOne({ tripId });
+
+                if (!trip) return;
                 if (trip.driverId !== driverId) return;
+                if (trip.status === "completed") return;
 
-                console.log("Location received:", lat, lng);
-
-                const locationEntry = { lat, lng, timestamp: Date.now() };
-
-                // Store latest location
-                await redisClient.set(
-                    `driver:${driverId}:location`,
-                    JSON.stringify(locationEntry),
-                    { EX: 3600 }
+                // Update latest location + push to history (keep last 500)
+                await Trip.findOneAndUpdate(
+                    { tripId },
+                    {
+                        driverLocation: { lat, lng, updatedAt: new Date() },
+                        $push: {
+                            locationHistory: {
+                                $each: [{ lat, lng, timestamp: new Date() }],
+                                $slice: -500
+                            }
+                        }
+                    }
                 );
-
-                // Append to history list (keep last 500 points)
-                await redisClient.lPush(
-                    `trip:${tripId}:history`,
-                    JSON.stringify(locationEntry)
-                );
-                await redisClient.lTrim(`trip:${tripId}:history`, 0, 499);
 
                 io.to(`trip:${tripId}`).emit("receive_location", { lat, lng });
+
             } catch (err) {
-                console.error("update location error:", err);
-                socket.emit("error", { message: "Failed to update driver's location" });
+                console.error("location_update error:", err);
             }
         });
 

@@ -110,6 +110,7 @@ const bookingSchema = new mongoose.Schema(
       notes: {
         type: String
       },
+      
       status: {
         type: String,
         enum: ["pending", "driver_on_the_way", "driver_reached"],
