@@ -15,7 +15,6 @@ const Driver = require("../driver/driver.model");
 const Technician = require("../technician/technician.model");
 const CustomerVehicle = require("../customers/vehicle/customerVehicle.model")
 
-
 exports.createAdminBooking = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();

@@ -50,7 +50,7 @@ const customerVehicleSchema = new mongoose.Schema(
     
     id: {
       type: String,
-      unique: true,
+      // unique: true,
       required: true,
       trim: true
     },
@@ -80,8 +80,8 @@ customerVehicleSchema.index(
 // 🔥 SEARCH INDEXES
 //////////////////////////////////////////////////////
 
-customerVehicleSchema.index({ registration_number: 1 });
-customerVehicleSchema.index({ model_year: 1 });
-customerVehicleSchema.index({ category: 1 });
+// customerVehicleSchema.index({ registration_number: 1 });
+// customerVehicleSchema.index({ model_year: 1 });
+// customerVehicleSchema.index({ category: 1 });
 
 module.exports = mongoose.model("CustomerVehicle", customerVehicleSchema);

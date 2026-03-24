@@ -4,7 +4,7 @@ const Booking = require("../booking/booking.model");
 
 exports.releaseSlots = async ({
   bookingId,
-  releaseType = "cancelled" // cancelled | force_release | reschedule
+  releaseType = "cancelled" 
 }) => {
   const session = await mongoose.startSession();
   session.startTransaction();
