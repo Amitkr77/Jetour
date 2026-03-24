@@ -207,11 +207,11 @@ exports.startTrip = async (req, res) => {
         }
 
         // 🚫 Restrict invalid transition
-        if (booking.status !== "confirmed") {
-            return res.status(400).json({
-                message: `Trip cannot be started. Current status is '${booking.status}'. It must be 'confirmed'.`
-            });
-        }
+        // if (booking.status !== "confirmed") {
+        //     return res.status(400).json({
+        //         message: `Trip cannot be started. Current status is '${booking.status}'. It must be 'confirmed'.`
+        //     });
+        // }
 
         // ✅ Start trip
         const now = new Date();
