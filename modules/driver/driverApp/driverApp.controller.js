@@ -192,13 +192,11 @@ exports.startTrip = async (req, res) => {
         }
 
         const driver = await Driver.findOne({ driver_id: driverId });
-
         if (!driver) {
             return res.status(404).json({ message: "Driver not found" });
         }
 
         const booking = await Booking.findById(bookingId);
-
         if (!booking) {
             return res.status(404).json({ message: "Booking not found" });
         }
@@ -208,18 +206,14 @@ exports.startTrip = async (req, res) => {
             return res.status(403).json({ message: "Unauthorized" });
         }
 
-        // ===============================
         // 🚫 Restrict invalid transition
-        // ===============================
         if (booking.status !== "confirmed") {
             return res.status(400).json({
                 message: `Trip cannot be started. Current status is '${booking.status}'. It must be 'confirmed'.`
             });
         }
 
-        // ===============================
-        // ✅ Valid transition
-        // ===============================
+        // ✅ Start trip
         const now = new Date();
 
         booking.status = "driver_on_the_way";
@@ -228,10 +222,33 @@ exports.startTrip = async (req, res) => {
 
         await booking.save();
 
+        // ✅ FILTERED RESPONSE
+        const responseData = {
+            booking_id: booking._id,
+            status: booking.status,
+
+            customer: {
+                name: booking.customer?.name,
+                phone: booking.customer?.phone
+            },
+
+            location: {
+                lat: booking.address?.lat,
+                lng: booking.address?.lng,
+                area: booking.address?.area,
+                street: booking.address?.street
+            },
+
+            trip: {
+                status: booking.trip_details?.status,
+                started_at: booking.trip_details?.van_started_at
+            }
+        };
+
         return res.json({
             success: true,
             message: "Trip started successfully",
-            booking
+            data: responseData
         });
 
     } catch (err) {
@@ -249,40 +266,91 @@ exports.completeTrip = async (req, res) => {
         }
 
         const driver = await Driver.findOne({ driver_id: driverId });
-
         if (!driver) {
             return res.status(404).json({ message: "Driver not found" });
         }
+
         const booking = await Booking.findById(bookingId);
-
-        if (!booking)
+        if (!booking) {
             return res.status(404).json({ message: "Booking not found" });
+        }
 
-        if (booking.assignment.driver.toString() !== driver._id.toString())
+        // ✅ Authorization
+        if (booking.assignment.driver.toString() !== driver._id.toString()) {
             return res.status(403).json({ message: "Unauthorized" });
+        }
 
+        // ===============================
+        // 🚫 STATUS VALIDATION (IMPORTANT)
+        // ===============================
+        if (
+            booking.status !== "driver_on_the_way" ||
+            booking.trip_details?.status !== "driver_on_the_way"
+        ) {
+            return res.status(400).json({
+                message: `Trip cannot be completed. Current status is booking='${booking.status}', trip='${booking.trip_details?.status}'. Both must be 'driver_on_the_way'.`
+            });
+        }
+
+        // ===============================
+        // ✅ VALID TRANSITION
+        // ===============================
+        const now = new Date();
+
+        booking.status = "driver_reached";
         booking.trip_details = {
             ...booking.trip_details,
             status: "driver_reached",
-            distance: req.body.distance,
-            duration: req.body.duration,
+            distance: req.body?.distance || booking.trip_details.distance,
+            duration: req.body?.duration || booking.trip_details.duration,
             arrival_confirmed: true,
-            arrived_at: new Date(),
+            arrived_at: now,
             vehicle_parked: true,
-            notes: req.body.notes
+            notes: req.body?.notes || booking.trip_details.notes
         };
 
-        // Final completion if technician already finished
+        // ✅ Final completion if service done
         if (booking.service_progress?.status === "completed") {
             booking.status = "completed";
         }
 
         await booking.save();
 
-        res.json({ message: "Trip completed", booking });
+        // ===============================
+        // ✅ CLEAN DRIVER RESPONSE
+        // ===============================
+        const responseData = {
+            booking_id: booking._id,
+            status: booking.status,
+
+            customer: {
+                name: booking.customer?.name,
+                phone: booking.customer?.phone
+            },
+
+            location: {
+                lat: booking.address?.lat,
+                lng: booking.address?.lng,
+                area: booking.address?.area,
+                street: booking.address?.street
+            },
+
+            trip: {
+                distance: booking.trip_details?.distance,
+                duration: booking.trip_details?.duration,
+                status: booking.trip_details?.status,
+                arrived_at: booking.trip_details?.arrived_at
+            }
+        };
+
+        return res.json({
+            success: true,
+            message: "Driver reached location successfully",
+            data: responseData
+        });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return res.status(500).json({ message: err.message });
     }
 };
 

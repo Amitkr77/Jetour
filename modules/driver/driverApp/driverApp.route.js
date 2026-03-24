@@ -15,6 +15,6 @@ router.get("/history", driverController.getHistory);
 router.post("/pre-shift", driverController.createShift);
 
 router.patch("/start-trip/:bookingId/:driverId", driverController.startTrip);
-router.patch("/complete-trip/:bookingId", driverController.completeTrip);
+router.patch("/complete-trip/:bookingId/:driverId", driverController.completeTrip);
 
 module.exports = router;
