@@ -142,9 +142,11 @@ exports.getAssignments = async (req, res) => {
             },
             status: b.status === "driver_on_the_way"
                 ? "active"
-                : b.status === "confirmed"
-                    ? "scheduled"
-                    : b.status,
+                : b.status === "driver_reached"
+                    ? "completed"
+                    : b.status === "confirmed"
+                        ? "schedule"
+                        : b.status
         }));
 
         return res.status(200).json({
