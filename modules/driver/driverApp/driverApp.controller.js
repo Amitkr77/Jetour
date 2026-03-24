@@ -119,7 +119,7 @@ exports.getAssignments = async (req, res) => {
             .sort({ "schedule.date": 1 });
 
         const filteredData = bookings.map(b => ({
-            booking_id: b.booking_id,
+            booking_id: b._id,
 
             package_name: b.package?.name,
 
