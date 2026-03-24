@@ -394,7 +394,11 @@ exports.updateAdminBooking = async (req, res) => {
 
 exports.createCustomerBooking = async (req, res) => {
   try {
-    const { customer_id, vehicle_id, packageId, booking_date, booking_time, additional_notes } = req.body;
+    const { customer_id, full_address, vehicle_id, packageId, booking_date, booking_time, additional_notes } = req.body;
+
+    if (!full_address?.lat || !full_address?.lng) {
+      return res.status(400).json({ message: "Lat & lng required for the booking" });
+    }
 
     // 1️⃣ Fetch customer by custom ID AND populate vehicles
     const customer = await CustomerModel.findOne({ id: customer_id })
@@ -435,7 +439,19 @@ exports.createCustomerBooking = async (req, res) => {
         phone: customer.contact_number,
         country_code: customer.country_code,
         gender: customer.gender,
-        address: customer.full_address,
+        // address: full_address,
+      },
+      address: {
+        governorate: full_address.governorate,
+        area: full_address.area,
+        block: full_address.block,
+        street: full_address.street,
+        building_no: full_address.building_number,
+        floor_no: full_address.floor,
+        flat_no: full_address.flat,
+        paci_details: full_address.paci_details,
+        lat: Number(full_address.lat),
+        lng: Number(full_address.lng),
       },
       vehicle: {
         vehicle_id: vehicle._id,
@@ -445,7 +461,7 @@ exports.createCustomerBooking = async (req, res) => {
         mileage: vehicle.mileage || 0
       },
       package: {
-        package_id: servicePackage._id, // Mongo _id reference
+        package_id: servicePackage._id,
         name: servicePackage.name,
         worktime: servicePackage.worktime,
         base_price,
