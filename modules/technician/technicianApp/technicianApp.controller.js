@@ -337,24 +337,23 @@ exports.getMyJob = async (req, res) => {
     };
 
     switch (status) {
-      case "confirmed":
-        queryFilter.status = { $in: ["confirmed"] };
-        break;
-
       case "completed":
         queryFilter.status = { $in: ["completed"] };
         break;
 
+      case "confirmed":
+        queryFilter.status = { $in: ["confirmed", "driver_reached"] }; // ← add driver_reached here
+        break;
+
       case "in-progress":
         queryFilter.$or = [
-          { status: { $in: ["in-progress", "driver_on_the_way", "driver_reached"] } },
+          { status: { $in: ["in-progress", "driver_on_the_way"] } }, // ← remove driver_reached from here
           { "service_progress.status": "in_progress" }
         ];
         break;
 
       default:
-        // Default → show only confirmed (upcoming jobs)
-        queryFilter.status = { $in: ["confirmed"] };
+        queryFilter.status = { $in: ["confirmed", "driver_reached"] }; // ← add driver_reached here
     }
 
     // ===============================
