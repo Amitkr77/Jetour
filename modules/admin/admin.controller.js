@@ -28,9 +28,9 @@ exports.register = async (req, res) => {
 // POST /auth/login
 // ─────────────────────────────────────────────
 exports.login = async (req, res) => {
-  const { contact, password } = req.body;
+  const { username, password } = req.body;
 
-  const admin = await Admin.findByContact(contact).select('+password');
+  const admin = await Admin.findOne({ username: username }).select('+password');
   if (!admin) {
     return res.status(401).json({ success: false, message: 'Invalid credentials, user not found!' });
   }
