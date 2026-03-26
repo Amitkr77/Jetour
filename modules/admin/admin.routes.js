@@ -5,13 +5,10 @@ const { protect } = require('../../middlewares/auth.middleware');
 
 router.post('/register', controller.register);
 router.post('/login', controller.login);
-router.post('/change-request-password',protect, controller.adminApprovePasswordChange)
-router.get(
-    '/password-change-requests', protect,
-    controller.getPasswordChangeRequests
-);
-
+router.post('/forgot-password', controller.forgotPassword);
+router.post('/verify-otp', controller.verifyOtp);
+router.post('/reset-password', controller.resetPassword);
 // Protected route
-router.get('/profile', protect, controller.profile);
+// router.get('/profile', protect, controller.profile);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const http = require("http");                          // ADD
+const http = require("http");
 const app = require('./app');
 const connectDB = require('./config/mongodb');
 const { startSlotCron } = require("./jobs/slotCron.job");

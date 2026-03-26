@@ -1,216 +1,130 @@
-const AdminService = require('./admin.service');
-const PasswordChangeRequest =  require('../../model/passwordRequest.model')
-const mongoose = require('mongoose');
-//
-// Register
-//
-exports.register = async (req, res, next) => {
-  try {
-    const adminId = await AdminService.registerAdmin(req.body);
+const jwt = require('jsonwebtoken');
+const Admin = require('./admin.model');
+const { generateOTP, verifyOTP } = require('../../utils/otp');
+const twilioClient = require('../../utils/twilloClinet');
 
-    res.status(201).json({
-      success: true,
-      message: 'Admin registered successfully',
-      data: adminId
-    });
-  } catch (error) {
-    next(error);
+// const { sendOTP } = require('../utils/sms');
+
+const signToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+
+// ────────────────── ───────────────────────────
+// POST /auth/register
+// ─────────────────────────────────────────────
+exports.register = async (req, res) => {
+  const { name, country_code, contact, password } = req.body;
+
+  const existing = await Admin.findOne({ contact });
+  if (existing) {
+    return res.status(409).json({ success: false, message: 'Contact already registered' });
   }
+
+  const admin = await Admin.create({ name, country_code, contact, password });
+
+  res.status(201).json({ success: true, data: admin });
 };
 
-//
-// Login
-//
-exports.login = async (req, res, next) => {
-  try {
-    const data = await AdminService.loginAdmin(req.body);
+// ─────────────────────────────────────────────
+// POST /auth/login
+// ─────────────────────────────────────────────
+exports.login = async (req, res) => {
+  const { contact, password } = req.body;
 
-    res.status(200).json({
-      success: true,
-      ...data
-    });
-  } catch (error) {
-    error.status = 401;
-    next(error);
+  const admin = await Admin.findByContact(contact).select('+password');
+  if (!admin) {
+    return res.status(401).json({ success: false, message: 'Invalid credentials, user not found!' });
   }
+
+  const isMatch = await admin.comparePassword(password);
+  if (!isMatch) {
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+
+  await admin.updateLastLogin();
+
+  const token = signToken(admin._id);
+  res.status(200).json({ success: true, token, data: admin });
 };
 
-// 
-// Profile
-// 
-exports.profile = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    admin: req.admin
+// ─────────────────────────────────────────────
+// POST /auth/forgot-password
+// ─────────────────────────────────────────────
+exports.forgotPassword = async (req, res) => {
+  const { contact, country_code } = req.body;
+
+  const admin = await Admin.findOne({ contact }).select('+otp +otpExpiresAt');
+  if (!admin) {
+    // Deliberately vague — don't reveal whether contact exists
+    return res.status(200).json({ success: true, message: 'If this number is registered, an OTP has been sent' });
+  }
+
+  const { otp, expiresAt } = generateOTP();
+
+  admin.otp = otp;
+  admin.otpExpiresAt = expiresAt;
+  admin.otpVerified = false;
+  await admin.save({ validateBeforeSave: false });
+
+
+  // Format phone with country code
+  let phone = contact.replace(/\D/g, '');
+  let formattedPhone = country_code.startsWith('+')
+    ? country_code + phone
+    : '+' + country_code + phone;
+
+  // Send SMS via Twilio
+  await twilioClient.messages.create({
+    body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to: formattedPhone
   });
+
+  // await sendOTP(country_code || admin.country_code, contact, otp);
+
+  res.status(200).json({ success: true, message: 'OTP sent to your registered number' });
 };
 
-exports.getProfile = async (req, res) => {
-  try {
-    const data = await AdminService.getProfile(req.user.id);
+// ─────────────────────────────────────────────
+// POST /auth/verify-otp
+// ─────────────────────────────────────────────
+exports.verifyOtp = async (req, res) => {
+  const { contact, otp } = req.body;
 
-    res.json({
-      success: true,
-      data
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+  const admin = await Admin.findOne({ contact }).select('+otp +otpExpiresAt +otpVerified');
+  if (!admin) {
+    return res.status(404).json({ success: false, message: 'Admin not found' });
   }
+
+  const valid = verifyOTP({ otp: admin.otp, expiresAt: admin.otpExpiresAt }, otp);
+  if (!valid) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+  }
+
+  // Mark OTP as verified — only then allow reset-password
+  admin.otpVerified = true;
+  await admin.save({ validateBeforeSave: false });
+
+  res.status(200).json({ success: true, message: 'OTP verified. Proceed to reset password.' });
 };
 
-exports.updateProfile = async (req, res) => {
-  try {
-    const data = await AdminService.updateProfile(
-      req.user.id,
-      req.body
-    );
+// ─────────────────────────────────────────────
+// POST /auth/reset-password
+// Body: { contact, newPassword }
+// ─────────────────────────────────────────────
+exports.resetPassword = async (req, res) => {
+  const { contact, newPassword } = req.body;
 
-    res.json({
-      success: true,
-      data
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+  const admin = await Admin.findOne({ contact }).select('+otp +otpExpiresAt +otpVerified +password');
+  if (!admin) {
+    return res.status(404).json({ success: false, message: 'Admin not found' });
   }
-};
 
-exports.changePassword = async (req, res) => {
-  try {
-    await AdminService.changePassword(
-      req.user.id,
-      req.body.current_password,
-      req.body.new_password
-    );
-
-    res.json({
-      success: true,
-      message: "Password changed successfully"
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+  if (!admin.otpVerified) {
+    return res.status(403).json({ success: false, message: 'OTP not verified. Please verify OTP first.' });
   }
-};
 
-exports.adminApprovePasswordChange = async (req, res) => {
-  try {
-    const { request_id, new_password } = req.body;
+  admin.password = newPassword;   // pre-save hook will hash it
+  await admin.clearOTP();         // saves + wipes all OTP fields atomically
 
-    // 1️⃣ Validate input
-    if (!request_id || !new_password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Request ID and new password are required'
-      });
-    }
-
-    if (new_password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters long'
-      });
-    }
-
-    // 2️⃣ Find request
-    const request = await PasswordChangeRequest.findById(request_id);
-
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: 'Password change request not found'
-      });
-    }
-
-    // 3️⃣ Prevent double approval
-    if (request.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: `Request already ${request.status}`
-      });
-    }
-
-    // 4️⃣ Get dynamic model safely
-    const Model = mongoose.model(request.user_model);
-
-    const user = await Model.findById(request.user).select('+password');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // 5️⃣ Hash password (VERY IMPORTANT 🔥)
-    // const bcrypt = require('bcrypt');
-    // const salt = await bcrypt.genSalt(10);
-    // const hashedPassword = await bcrypt.hash(new_password, salt);
-
-    user.password = new_password;
-    await user.save();
-
-    // 6️⃣ Update request
-    request.status = 'approved';
-    request.action_by = req.admin._id; 
-    request.action_at = new Date();
-    await request.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Password updated successfully'
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
-exports.getPasswordChangeRequests = async (req, res) => {
-  try {
-    const { status, page = 1, limit = 10 } = req.query;
-
-    const filter = {};
-
-    // Optional status filter
-    if (status) {
-      filter.status = status;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const requests = await PasswordChangeRequest
-      .find(filter)
-      .populate('user', 'name technician_id email contact')
-      .populate('action_by', 'name email')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await PasswordChangeRequest.countDocuments(filter);
-
-    res.status(200).json({
-      success: true,
-      total,
-      current_page: Number(page),
-      total_pages: Math.ceil(total / limit),
-      data: requests
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
+  res.status(200).json({ success: true, message: 'Password reset successful' });
 };
