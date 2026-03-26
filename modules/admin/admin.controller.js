@@ -12,14 +12,14 @@ const signToken = (id) =>
 // POST /auth/register
 // ─────────────────────────────────────────────
 exports.register = async (req, res) => {
-  const { name, country_code, contact, password } = req.body;
+  const { username, country_code, contact, password } = req.body;
 
   const existing = await Admin.findOne({ contact });
   if (existing) {
     return res.status(409).json({ success: false, message: 'Contact already registered' });
   }
 
-  const admin = await Admin.create({ name, country_code, contact, password });
+  const admin = await Admin.create({ username, country_code, contact, password });
 
   res.status(201).json({ success: true, data: admin });
 };

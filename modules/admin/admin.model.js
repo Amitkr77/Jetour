@@ -5,11 +5,11 @@ const SALT_ROUNDS = 10;
 
 const adminSchema = new mongoose.Schema(
   {
-    name: {
+    username: {
       type: String,
-      required: [true, 'Name is required'],
+      required: [true, 'Username is required'],
       trim: true,
-      maxlength: [100, 'Name cannot exceed 100 characters']
+      maxlength: [100, 'Username cannot exceed 100 characters']
     },
     country_code: {
       type: String,
