@@ -128,3 +128,72 @@ exports.resetPassword = async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Password reset successful' });
 };
+
+// ─────────────────────────────────────────────
+// GET /admin/profile
+// Protected route — requires valid JWT
+// ─────────────────────────────────────────────
+exports.getProfile = async (req, res) => {
+  const admin = await Admin.findById(req?.admin?._id);
+  if (!admin) {
+    return res.status(404).json({ success: false, message: 'Admin not found' });
+  }
+
+  res.status(200).json({ success: true, data: admin });
+};
+
+// ─────────────────────────────────────────────
+// PATCH /admin/profile
+// Protected route — requires valid JWT
+// ─────────────────────────────────────────────
+exports.updateProfile = async (req, res) => {
+  const ALLOWED_FIELDS = ['name', 'country_code', 'contact'];
+
+  // Strip out any fields not in the allowed list
+  const updates = Object.fromEntries(
+    Object.entries(req.body).filter(([key]) => ALLOWED_FIELDS.includes(key))
+  );
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ success: false, message: 'No valid fields provided to update' });
+  }
+
+  const admin = await Admin.findByIdAndUpdate(
+    req.admin._id,
+    updates,
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({ success: true, message: 'Profile updated', data: admin });
+};
+
+// ─────────────────────────────────────────────
+// PATCH /admin/change-password
+// Protected route — requires valid JWT
+// ─────────────────────────────────────────────
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Both currentPassword and newPassword are required' });
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ success: false, message: 'New password must be different from current password' });
+  }
+
+  const admin = await Admin.findById(req.admin._id).select('+password');
+  if (!admin) {
+    return res.status(404).json({ success: false, message: 'Admin not found' });
+  }
+
+  const isMatch = await admin.comparePassword(currentPassword);
+  if (!isMatch) {
+    return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+  }
+
+  admin.password = newPassword; // pre-save hook will hash it
+  await admin.save();
+
+  res.status(200).json({ success: true, message: 'Password changed successfully' });
+};

@@ -9,6 +9,6 @@ router.post('/forgot-password', controller.forgotPassword);
 router.post('/verify-otp', controller.verifyOtp);
 router.post('/reset-password', controller.resetPassword);
 // Protected route
-// router.get('/profile', protect, controller.profile);
+router.get('/profile', protect, controller.getProfile);
 
 module.exports = router;
