@@ -197,3 +197,45 @@ exports.changePassword = async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Password changed successfully' });
 };
+
+// ─────────────────────────────────────────────
+// POST /auth/resend-otp
+// Body: { contact, country_code }
+// ─────────────────────────────────────────────
+exports.resendOtp = async (req, res) => {
+  try {
+    const { contact, country_code } = req.body;
+
+    if (!contact || !country_code) {
+      return res.status(400).json({ success: false, message: 'Contact and country code are required' });
+    }
+
+    const admin = await Admin.findOne({ contact }).select('+otp +otpExpiresAt');
+    if (!admin) {
+      // Vague response to avoid revealing registered contacts
+      return res.status(200).json({ success: true, message: 'If this number is registered, an OTP has been sent' });
+    }
+
+    // Generate new OTP
+    const { otp, expiresAt } = generateOTP();
+    admin.otp = otp;
+    admin.otpExpiresAt = expiresAt;
+    admin.otpVerified = false;
+    await admin.save({ validateBeforeSave: false });
+
+    // Format phone number with country code
+    const phone = contact.replace(/\D/g, '');
+    const formattedPhone = country_code.startsWith('+') ? country_code + phone : '+' + country_code + phone;
+
+    // Send OTP via Twilio
+    await twilioClient.messages.create({
+      body: `Your OTP for login is ${otp}. It will expire in 5 minutes.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: formattedPhone
+    });
+
+    res.status(200).json({ success: true, message: 'OTP resent to your registered number' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

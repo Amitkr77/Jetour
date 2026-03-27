@@ -4,7 +4,7 @@ const Booking = require("../booking/booking.model");
 
 exports.releaseSlots = async ({
   bookingId,
-  releaseType = "cancelled" 
+  releaseType = "cancelled"
 }) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -50,6 +50,18 @@ exports.releaseSlots = async ({
     if (releaseType === "force_release") {
       booking.status = "pending_reassignment";
     }
+
+    // Clear booking schedule
+    booking.schedule.slot_ids = [];
+    booking.schedule.end_time = null;
+
+    // Clear assignment
+    booking.assignment = {
+      service_van: null,
+      driver: null,
+      technician: null,
+      needs_attention: true
+    };
 
     await booking.save({ session });
 

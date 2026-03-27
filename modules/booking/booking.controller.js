@@ -7,13 +7,14 @@ const ServicePackage = require("../package/package.model");
 const VanSlot = require("../vanSlot/vanSlot.model");
 const ServiceVan = require("../serviceVan/serviceVan.model");
 const ScheduleConfig = require("../schedule/schedule.model");
-const Notification = require("../../model/notification.model");
 const Settings = require("../../model/settings.model");
 const vehicleModel = require("../vehicle/vehicle.model")
 const Driver = require("../driver/driver.model");
 const Technician = require("../technician/technician.model");
 const CustomerVehicle = require("../customers/vehicle/customerVehicle.model")
 const { calculatePackagePrice } = require("../package/package.service");
+const { sendNotificationToUser } = require("../../controllers/notification.controller.js")
+const { releaseSlots } = require("../vanSlot/slotRelase.service.js")
 
 exports.createAdminBooking = async (req, res) => {
   const session = await mongoose.startSession();
@@ -232,146 +233,146 @@ exports.createAdminBooking = async (req, res) => {
 };
 
 exports.updateAdminBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-
     const bookingId = req.params.id;
+    const { schedule, booking_status } = req.body;
 
-    const {
-      customer,
-      vehicle,
-      package: pkg,
-      schedule,
-      payment_method,
-      payment_status,
-      booking_status,
-      additional_notes
-    } = req.body;
+    const booking = await Booking.findById(bookingId).session(session);
+    if (!booking) throw new Error("Booking not found");
 
-    const booking = await Booking.findById(bookingId);
+    let scheduleChanged = false;
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
-
-    // ---------------- CUSTOMER ----------------
-
-    if (customer) {
-      if (customer.name) booking.customer.name = customer.name;
-      if (customer.phone) booking.customer.phone = customer.phone;
-      if (customer.country_code) booking.customer.country_code = customer.country_code;
-      if (customer.email !== undefined) booking.customer.email = customer.email;
-      if (customer.gender) booking.customer.gender = customer.gender;
-      if (customer.address) {
-        booking.address = customer.address;
+    // ---------------- STATUS UPDATE ----------------
+    if (booking_status) {
+      if (booking_status === "cancelled") {
+        // 🔹 Use releaseSlots service to release booked slots and update status
+        await releaseSlots({ bookingId: booking._id, releaseType: "cancelled" });
+        await session.commitTransaction();
+        session.endSession();
+        return res.status(200).json({
+          success: true,
+          message: "Booking cancelled and slots released",
+        });
+      } else {
+        booking.status = booking_status;
       }
     }
 
-    // ---------------- VEHICLE ----------------
+    // ---------------- SCHEDULE UPDATE ----------------
+    if (schedule) {
+      if (schedule.date && schedule.date !== booking.schedule.date) {
+        booking.schedule.date = schedule.date;
+        scheduleChanged = true;
+      }
 
-    if (vehicle) {
+      if (schedule.start_time && schedule.start_time !== booking.schedule.start_time) {
+        booking.schedule.start_time = schedule.start_time;
+        scheduleChanged = true;
+      }
+    }
 
-      if (vehicle.vehicle_model) {
+    // ---------------- CUSTOMER INFO UPDATE ----------------
+    if (req.body.customer) {
+      const cust = req.body.customer;
 
-        const vehicleDoc = await vehicleModel.findOne({
-          vehicle_model: vehicle.vehicle_model
-        });
+      if (cust.phone) booking.customer.phone = cust.phone;
+      if (cust.country_code) booking.customer.country_code = cust.country_code;
 
-        if (!vehicleDoc) {
-          return res.status(400).json({
-            success: false,
-            message: "Vehicle model not found"
-          });
+      if (cust.address) {
+        booking.address = {
+          ...booking.address,
+          ...cust.address
+        };
+      }
+    }
+
+    // ---------------- RESCHEDULING LOGIC ----------------
+    if (scheduleChanged) {
+      const oldSlotIds = booking.schedule.slot_ids || [];
+
+      if (oldSlotIds.length) {
+        await VanSlot.updateMany(
+          { _id: { $in: oldSlotIds }, status: "booked" },
+          { $set: { status: "available", booking_id: null } },
+          { session }
+        );
+      }
+
+      booking.schedule.slot_ids = [];
+      booking.schedule.end_time = null;
+      booking.assignment = { service_van: null, driver: null, technician: null, needs_attention: true };
+
+      const servicePackage = await ServicePackage.findById(booking.package.package_id).session(session);
+      const config = await ScheduleConfig.findOne({}).session(session);
+      const slotInterval = config.slot_interval_minutes;
+      const buffer = config.buffer_between_bookings_minutes;
+      const totalBlock = servicePackage.worktime + buffer;
+      const requiredSlots = Math.ceil(totalBlock / slotInterval);
+
+      const allSlots = await VanSlot.find({ date: booking.schedule.date, status: "available" })
+        .sort({ van_id: 1, start_time: 1 })
+        .session(session);
+
+      const grouped = {};
+      allSlots.forEach(s => {
+        const key = s.van_id.toString();
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(s);
+      });
+
+      let selectedVan = null;
+      let selectedSlots = [];
+
+      for (const vanId in grouped) {
+        const slots = grouped[vanId];
+        const slotMap = Object.fromEntries(slots.map(s => [s.start_time, s]));
+        let currentTime = booking.schedule.start_time;
+        const consecutive = [];
+
+        for (let i = 0; i < requiredSlots; i++) {
+          if (!slotMap[currentTime]) break;
+          consecutive.push(slotMap[currentTime]);
+          const [h, m] = currentTime.split(":").map(Number);
+          const next = new Date(0, 0, 0, h, m + slotInterval);
+          currentTime = next.getHours().toString().padStart(2, "0") + ":" + next.getMinutes().toString().padStart(2, "0");
         }
 
-        booking.vehicle.vehicle_id = vehicleDoc._id;
-        booking.vehicle.vehicle_model = vehicleDoc.vehicle_model;
+        if (consecutive.length === requiredSlots) {
+          selectedVan = vanId;
+          selectedSlots = consecutive;
+          break;
+        }
       }
 
-      if (vehicle.registration_number) {
-        booking.vehicle.registration_number = vehicle.registration_number;
+      if (!selectedVan) {
+        booking.status = "pending_manual_assignment";
+      } else {
+        const slotIds = selectedSlots.map(s => s._id);
+
+        const updateResult = await VanSlot.updateMany(
+          { _id: { $in: slotIds }, status: "available" },
+          { $set: { status: "booked", booking_id: booking._id } },
+          { session }
+        );
+
+        if (updateResult.modifiedCount !== slotIds.length) throw new Error("Slot booking conflict, please retry");
+
+        const van = await ServiceVan.findById(selectedVan).session(session);
+        const needsAttention = !van.driver || !van.technician;
+
+        booking.schedule.slot_ids = slotIds;
+        booking.schedule.end_time = selectedSlots[selectedSlots.length - 1].end_time;
+        booking.assignment = { service_van: van._id, driver: van.driver || null, technician: van.technician || null, needs_attention: needsAttention };
+        booking.status = "confirmed";
       }
-
-      if (vehicle.mileage !== undefined) {
-        booking.vehicle.mileage = vehicle.mileage;
-      }
     }
 
-    // ---------------- PACKAGE ----------------
-
-    if (pkg?.package_id) {
-
-      const servicePackage = await ServicePackage.findById(pkg.package_id);
-
-      if (!servicePackage) {
-        return res.status(400).json({
-          success: false,
-          message: "Package not found"
-        });
-      }
-
-      const vehiclePayload = {
-        vehicle_id: booking.vehicle.vehicle_id,
-        mileage: booking.vehicle.mileage
-      };
-
-      const base_price = calculatePackagePrice(servicePackage, vehiclePayload);
-
-      const settings = await Settings.findOne({});
-
-      const service_fee = settings?.service_fee || 0;
-
-      const total_amount = base_price + service_fee;
-
-      booking.package = {
-        package_id: servicePackage._id,
-        name: servicePackage.name,
-        worktime: servicePackage.worktime,
-        base_price,
-        service_fee,
-        total_amount
-      };
-    }
-
-    // ---------------- SCHEDULE ----------------
-
-    if (schedule) {
-
-      if (schedule.date) {
-        booking.schedule.date = schedule.date;
-      }
-
-      if (schedule.start_time) {
-        booking.schedule.start_time = schedule.start_time;
-      }
-
-    }
-
-    // ---------------- PAYMENT ----------------
-
-    if (payment_method) {
-      booking.payment.method = payment_method;
-    }
-
-    if (payment_status) {
-      booking.payment.status = payment_status;
-    }
-
-    // ---------------- BOOKING STATUS ----------------
-
-    if (booking_status) {
-      booking.status = booking_status;
-    }
-
-    // ---------------- NOTES ----------------
-
-    if (additional_notes !== undefined) {
-      booking.additional_notes = additional_notes;
-    }
-
-    await booking.save();
+    await booking.save({ session });
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(200).json({
       success: true,
@@ -380,14 +381,10 @@ exports.updateAdminBooking = async (req, res) => {
     });
 
   } catch (error) {
-
+    await session.abortTransaction();
+    session.endSession();
     console.error("Update booking error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -659,20 +656,9 @@ exports.confirmBookingPayment = async (req, res) => {
 
     await booking.save({ session });
 
-    // 6. Notify admin if needed
-    // if (needsAttention) {
-    //   await Notification.create([{
-    //     title: "Booking needs driver/technician assignment",
-    //     booking: booking._id,
-    //     role: "admin"
-    //   }], { session });
-    // }
-    // await Notification.create([{
-    //   title: "Your booking is confirmed",
-    //   booking: booking._id,
-    //   user: booking.customer,
-    //   role: "customer"
-    // }], { session });
+    // await sendNotificationToUser(booking.assignment.driver, "🚗 Booking Update", "Your service has been assigned!", { booking_id: booking._id })
+
+    //  await sendNotificationToUser(booking.assignment.technician, "🚗 Booking Update", "Your service has been assigned!", { booking_id: booking._id })
 
     await session.commitTransaction();
     session.endSession();
@@ -937,36 +923,34 @@ exports.getConfirmedBookingsByCustomer = async (req, res) => {
 };
 
 exports.cancelBooking = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { booking_id } = req.body;
 
-    const booking = await Booking.findById(booking_id).session(session);
-
-    if (!booking) throw new Error("Booking not found");
-
-    if (booking.schedule.slot_ids.length > 0) {
-      await VanSlot.updateMany(
-        { _id: { $in: booking.schedule.slot_ids } },
-        { is_booked: false, booking: null },
-        { session }
-      );
+    if (!booking_id) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_id is required"
+      });
     }
 
-    booking.status = "cancelled";
-    await booking.save({ session });
+    // Use your centralized release logic
+    await releaseSlots({
+      bookingId: booking_id,
+      releaseType: "cancelled"
+    });
 
-    await session.commitTransaction();
-    session.endSession();
-
-    res.json({ message: "Booking cancelled and slots released" });
+    return res.status(200).json({
+      success: true,
+      message: "Booking cancelled and slots released successfully"
+    });
 
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    res.status(500).json({ message: error.message });
+    console.error("Cancel booking error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 

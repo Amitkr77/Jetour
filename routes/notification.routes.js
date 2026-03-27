@@ -3,13 +3,9 @@ const router = express.Router();
 const notificationController = require("../controllers/notification.controller");
 
 router.get(
-  "/driver",
-  notificationController.getDriverNotifications
+    "/user/save-fcm-token",
+    notificationController.saveFcmToken
 );
 
-router.put(
-  "/:id/read",
-  notificationController.markAsRead
-);
 
 module.exports = router;
