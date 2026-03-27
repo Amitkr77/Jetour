@@ -12,7 +12,7 @@ router.get("/active-trip/:driverId", driverController.getActiveTrip);
 router.get("/assignments/:driverId", driverController.getAssignments);
 router.get("/history", driverController.getHistory);
 
-router.post("/pre-shift", driverController.createShift);
+// router.post("/pre-shift", driverController.createShift);
 
 router.patch("/start-trip/:bookingId/:driverId", driverController.startTrip);
 router.patch("/complete-trip/:bookingId/:driverId", driverController.completeTrip);

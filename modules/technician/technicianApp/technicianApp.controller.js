@@ -249,75 +249,10 @@ exports.getJobDetail = async (req, res) => {
   }
 };
 
-// exports.getMyJob = async (req, res) => {
-//   try {
-//     const technicianId = req.params.technicianId;
-
-//     if (!technicianId) {
-//       return res.status(400).json({ message: "Technician ID is required" });
-//     }
-
-//     const technician = await Technician.findOne({ technician_id: technicianId });
-
-//     // ===============================
-//     // 1️⃣ Fetch Jobs (assigned to technician)
-//     // ===============================
-//     const bookings = await Booking.find({
-//       "assignment.technician": technician._id,
-//       status: { $in: ["confirmed", "completed", "in-progress"] }
-//     })
-//       .sort({ "schedule.date": 1, "schedule.start_time": 1 })
-//       .lean();
-
-
-//     // ===============================
-//     // 2️⃣ Format Response Data
-//     // ===============================
-//     const formattedJobs = bookings.map((booking) => ({
-//       package_name: booking.package?.name || null,
-//       vehicle_name: booking.vehicle?.vehicle_model || null,
-//       status:
-//         booking?.service_progress?.status === "in_progress"
-//           ? "in_progress"
-//           : booking.status === "confirmed"
-//             ? "scheduled"
-//             : booking.status,
-//       booking_time: booking.schedule?.start_time || null,
-//       booking_date: booking.schedule.date,
-//       booking_id: booking._id,
-//       customer_details: {
-//         name: booking.customer?.name || null,
-//         country_code: booking.customer?.country_code,
-//         contact: booking.customer?.phone || null
-//       }
-//     }));
-
-
-//     // ===============================
-//     // 3️⃣ Final Response
-//     // ===============================
-//     return res.status(200).json({
-//       success: true,
-//       message: "Jobs fetched successfully",
-//       total: formattedJobs.length,
-//       data: formattedJobs
-//     });
-
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message
-//     });
-//   }
-// };
-// ===============================
-// 5️⃣ START JOB
-// ===============================
-
 exports.getMyJob = async (req, res) => {
   try {
     const technicianId = req.params.technicianId;
-    const { status } = req.query;
+    const { status, page = 1, limit = 10 } = req.query;
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -342,29 +277,42 @@ exports.getMyJob = async (req, res) => {
         break;
 
       case "confirmed":
-        queryFilter.status = { $in: ["confirmed", "driver_reached"] }; // ← add driver_reached here
+        queryFilter.status = { $in: ["confirmed", "driver_reached"] };
         break;
 
       case "in-progress":
         queryFilter.$or = [
-          { status: { $in: ["in-progress", "driver_on_the_way"] } }, // ← remove driver_reached from here
+          { status: { $in: ["in-progress", "driver_on_the_way"] } },
           { "service_progress.status": "in_progress" }
         ];
         break;
 
       default:
-        queryFilter.status = { $in: ["confirmed", "driver_reached"] }; // ← add driver_reached here
+        queryFilter.status = { $in: ["confirmed", "driver_reached"] };
     }
 
     // ===============================
-    // 2️⃣ Fetch Jobs
+    // 2️⃣ Pagination Setup
     // ===============================
-    const bookings = await Booking.find(queryFilter)
-      .sort({ "schedule.date": 1, "schedule.start_time": 1 })
-      .lean();
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit);
+    const skip = (pageNumber - 1) * pageSize;
 
     // ===============================
-    // 3️⃣ Format Response Data
+    // 3️⃣ Fetch Jobs with Pagination
+    // ===============================
+    const [bookings, totalCount] = await Promise.all([
+      Booking.find(queryFilter)
+        .sort({ "schedule.date": 1, "schedule.start_time": 1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+
+      Booking.countDocuments(queryFilter)
+    ]);
+
+    // ===============================
+    // 4️⃣ Format Response Data
     // ===============================
     const formattedJobs = bookings.map((booking) => {
       let finalStatus;
@@ -393,12 +341,14 @@ exports.getMyJob = async (req, res) => {
     });
 
     // ===============================
-    // 4️⃣ Final Response
+    // 5️⃣ Final Response
     // ===============================
     return res.status(200).json({
       success: true,
       message: "Jobs fetched successfully",
-      total: formattedJobs.length,
+      total: totalCount,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalCount / pageSize),
       data: formattedJobs
     });
 
