@@ -10,7 +10,7 @@ exports.getDashboard = async (req, res) => {
   try {
     // 🔹 Get technician custom ID
     const technicianId =
-      req.user?.technicianId || req.params.technicianId || req.body.technicianId;
+      req.params.technicianId || req.body.technicianId;
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -508,7 +508,7 @@ exports.startJob = async (req, res) => {
 exports.updateChecklist = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId = req.user?.id || req.body.technicianId;
+    const technicianId =   req.body.technicianId;
 
     const booking = await Booking.findById(bookingId);
 
@@ -537,7 +537,7 @@ exports.uploadPhotos = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { type, category } = req.body;
-    const technicianId = req.user?.id || req.body.technicianId;
+    const technicianId =   req.body.technicianId;
 
 
     if (!technicianId) {

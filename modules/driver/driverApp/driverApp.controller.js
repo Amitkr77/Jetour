@@ -16,7 +16,7 @@ function formatTime(time) {
 
 exports.getDashboard = async (req, res) => {
     try {
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =  req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({ message: "Driver ID is required" });
@@ -63,7 +63,7 @@ exports.getDashboard = async (req, res) => {
 
 exports.getActiveTrip = async (req, res) => {
     try {
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =   req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({ message: "Driver ID is required" });
@@ -93,7 +93,7 @@ exports.getActiveTrip = async (req, res) => {
 
 exports.getAssignments = async (req, res) => {
     try {
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =   req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({
@@ -187,7 +187,7 @@ exports.createShift = async (req, res) => {
 exports.startTrip = async (req, res) => {
     try {
         const { bookingId } = req.params;
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =   req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({ message: "Driver ID is required" });
@@ -261,7 +261,7 @@ exports.startTrip = async (req, res) => {
 exports.completeTrip = async (req, res) => {
     try {
         const { bookingId } = req.params;
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =   req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({ message: "Driver ID is required" });
@@ -358,7 +358,7 @@ exports.completeTrip = async (req, res) => {
 
 exports.getHistory = async (req, res) => {
     try {
-        const driverId = req.user?.id || req.params.driverId;
+        const driverId =   req.params.driverId;
 
         if (!driverId) {
             return res.status(400).json({ message: "Driver ID is required" });

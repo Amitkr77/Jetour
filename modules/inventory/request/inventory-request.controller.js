@@ -4,7 +4,7 @@ const InventoryRequestService = require("./inventory-request.service");
 exports.createInventoryRequest = async (req, res) => {
   try {
     // 🔥 Take from middleware if exists, otherwise from body
-    const technicianId = req.user?._id || req.body.technicianId;
+    const technicianId = req.body.technicianId;
 
     if (!technicianId) {
       return res.status(400).json({
@@ -154,7 +154,7 @@ exports.getTechnicianRequests = async (req, res, next) => {
 exports.removeItemFromRequest = async (req, res) => {
   try {
     const { requestId, itemId } = req.params;
-    const { technicianId } = req.user?._id || req.body
+    const { technicianId } = req.body
 
     const result = await InventoryRequestService.removeItemFromRequest(
       requestId,
@@ -178,7 +178,7 @@ exports.removeItemFromRequest = async (req, res) => {
 exports.deleteInventoryRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { technicianId } = req.user?._id || req.body
+    const { technicianId } = req.body
 
     const result = await InventoryRequestService.deleteRequest(
       requestId,
