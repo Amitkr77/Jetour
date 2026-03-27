@@ -360,68 +360,30 @@ exports.getMyJob = async (req, res) => {
   }
 };
 
-
-// exports.startJob = async (req, res) => {
-//   try {
-//     const { bookingId } = req.params;
-//     const technicianId = req.body.technicianId;
-
-
-//     if (!technicianId) {
-//       return res.status(400).json({ message: "Technician ID is required" });
-//     }
-
-//     const technician = await Technician.findOne({ technician_id: technicianId });
-
-//     const booking = await Booking.findById(bookingId);
-
-//     if (!booking)
-//       return res.status(404).json({ message: "Booking not found" });
-
-//     if (booking.assignment.technician.toString() !== technician._id.toString())
-//       return res.status(403).json({ message: "Unauthorized" });
-
-//     booking.status = "in-progress"
-//     booking.service_progress.status = "in_progress";
-//     booking.service_progress.started_at = new Date();
-
-//     await booking.save();
-
-//     res.json({ success: true, message: "Job started", booking });
-
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-// ===============================
-// 6️⃣ UPDATE CHECKLIST
-// ===============================
-
 exports.startJob = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const technicianId = req.body.technicianId;
 
     if (!technicianId) {
-      return res.status(400).json({ message: "Technician ID is required" });
+      return res.status(400).json({ success: false, message: "Technician ID is required" });
     }
 
     const technician = await Technician.findOne({ technician_id: technicianId });
 
     if (!technician) {
-      return res.status(404).json({ message: "Technician not found" });
+      return res.status(404).json({ success: false, message: "Technician not found" });
     }
 
     const booking = await Booking.findById(bookingId);
 
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
     // ✅ Authorization check
     if (booking.assignment.technician.toString() !== technician._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
+      return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
     // ===============================
@@ -429,6 +391,7 @@ exports.startJob = async (req, res) => {
     // ===============================
     if (booking.status !== "driver_reached") {
       return res.status(400).json({
+        success: false,
         message: `Job cannot be started. Current status is '${booking.status}'. It must be 'driver_reached'.`
       });
     }
@@ -451,14 +414,14 @@ exports.startJob = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 exports.updateChecklist = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const technicianId =   req.body.technicianId;
+    const technicianId = req.body.technicianId;
 
     const booking = await Booking.findById(bookingId);
 
@@ -487,7 +450,7 @@ exports.uploadPhotos = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { type, category } = req.body;
-    const technicianId =   req.body.technicianId;
+    const technicianId = req.body.technicianId;
 
 
     if (!technicianId) {
