@@ -1,5 +1,4 @@
 const Booking = require("../../booking/booking.model");
-const TechnicianReview = require("../technicianReview/technicianReview.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
 
@@ -11,6 +10,8 @@ exports.getDashboard = async (req, res) => {
     // 🔹 Get technician custom ID
     const technicianId =
       req.params.technicianId || req.body.technicianId;
+
+    const { page = 1, limit = 5 } = req.query;
 
     if (!technicianId) {
       return res.status(400).json({ message: "Technician ID is required" });
@@ -28,32 +29,45 @@ exports.getDashboard = async (req, res) => {
     }
 
     // ===============================
-    // 2️⃣ Get Today's Date
+    // 2️⃣ Pagination Setup
     // ===============================
-    const today = new Date().toISOString().split("T")[0];
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit);
+    const skip = (pageNumber - 1) * pageSize;
 
     // ===============================
-    // 3️⃣ Get Today's Jobs
+    // 3️⃣ Get Today's Jobs (Paginated)
     // ===============================
-    const bookings = await Booking.find({
+    const query = {
       "assignment.technician": technician._id,
-      "schedule.date": today
-    });
+      status: "confirmed"
+    };
+
+    const [bookings, totalCount] = await Promise.all([
+      Booking.find(query)
+        .sort({ createdAt: 1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean(),
+
+      Booking.countDocuments(query)
+    ]);
 
     // ===============================
     // 4️⃣ Format Today Jobs
     // ===============================
-    const todayJobs = bookings.map((booking) => ({
+    const jobs = bookings.map((booking) => ({
       package_name: booking.package?.name || null,
       customer_name: booking.customer?.name || null,
       vehicle_name: booking.vehicle?.vehicle_model || null,
       status:
-        booking.service_progress.status === "in-progress"
+        booking?.service_progress?.status === "in-progress"
           ? "active"
           : booking.status === "confirmed"
             ? "scheduled"
             : booking.status,
-      booking_time: booking.schedule?.start_time || null
+      booking_time: booking.schedule?.start_time || null,
+      booking_date: booking.schedule?.date || null
     }));
 
     // ===============================
@@ -62,9 +76,15 @@ exports.getDashboard = async (req, res) => {
     res.json({
       success: true,
       message: "Dashboard fetched successfully",
-      rating: technician.rating || 0,
       name: technician.name,
-      today_jobs: todayJobs
+      rating: technician.rating || 0,
+
+      // Pagination meta
+      total: totalCount,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalCount / pageSize),
+
+      Jobs: jobs
     });
 
   } catch (err) {
@@ -442,7 +462,6 @@ exports.updateChecklist = async (req, res) => {
   }
 };
 
-
 // ===============================
 // 7️⃣ UPLOAD PHOTOS
 // ===============================
@@ -572,7 +591,6 @@ exports.completeJob = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // ===============================
 // 🔟 HISTORY
