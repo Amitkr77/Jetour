@@ -514,7 +514,7 @@ exports.getHistory = async (req, res) => {
 
         const bookings = await Booking.find(filter)
             .select({
-                booking_id: 1,
+                _id: 1,
                 status: 1,
                 schedule: 1,
                 package: 1,
@@ -532,7 +532,7 @@ exports.getHistory = async (req, res) => {
 
         // format response
         const formattedData = bookings.map(b => ({
-            booking_id: b.booking_id,
+            booking_id: b._id,
 
             package_name: b.package?.name,
 
