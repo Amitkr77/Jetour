@@ -239,6 +239,7 @@ exports.getAssignments = async (req, res) => {
         const bookings = await Booking.find(filter)
             .select({
                 _id: 1,
+                customer: 1,
                 status: 1,
                 schedule: 1,
                 package: 1,
@@ -260,6 +261,12 @@ exports.getAssignments = async (req, res) => {
             schedule_time: formatTime(b.schedule?.start_time),
 
             schedule_date: b.schedule?.date,
+
+            customer: {
+                name: b.customer?.name,
+                phone: b.customer?.phone,
+                country_code: b.customer?.country_code
+            },
 
             customer_location: {
                 lat: b.address?.lat || null,
