@@ -99,6 +99,96 @@ exports.getActiveTrip = async (req, res) => {
     }
 };
 
+// exports.getAssignments = async (req, res) => {
+//     try {
+//         const driverId = req.params.driverId;
+
+//         if (!driverId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Driver ID is required"
+//             });
+//         }
+
+//         // pagination params
+//         const page = parseInt(req.query.page) || 1;
+//         const limit = parseInt(req.query.limit) || 10;
+//         const skip = (page - 1) * limit;
+
+//         const driver = await Driver.findOne({ driver_id: driverId });
+
+//         if (!driver) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Driver not found"
+//             });
+//         }
+
+//         // total count (before pagination)
+//         const total = await Booking.countDocuments({
+//             "assignment.driver": driver._id
+//         });
+
+//         const bookings = await Booking.find({
+//             "assignment.driver": driver._id
+//         })
+//             .populate("assignment.technician", "name technician_id contact")
+//             .populate("assignment.driver", "name driver_id")
+//             .sort({ "schedule.date": 1 })
+//             .skip(skip)
+//             .limit(limit);
+
+//         const filteredData = bookings.map(b => ({
+//             booking_id: b._id,
+
+//             package_name: b.package?.name,
+
+//             schedule_time: formatTime(b.schedule?.start_time),
+
+//             customer_location: {
+//                 lat: b.address?.lat || null,
+//                 lng: b.address?.lng || null
+//             },
+
+//             technician: {
+//                 name: b.assignment?.technician?.name,
+//                 technician_id: b.assignment?.technician?.technician_id,
+//                 contact: b.assignment?.technician?.contact
+//             },
+
+//             driver: {
+//                 name: b.assignment?.driver?.name,
+//                 id: b.assignment?.driver?.driver_id
+//             },
+
+//             status: b.status === "driver_on_the_way"
+//                 ? "active"
+//                 : b.status === "driver_reached"
+//                     ? "completed"
+//                     : b.status === "confirmed"
+//                         ? "schedule"
+//                         : b.status
+//         }));
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Assignments fetched successfully",
+//             total,
+//             page,
+//             limit,
+//             totalPages: Math.ceil(total / limit),
+//             data: filteredData
+//         });
+
+//     } catch (err) {
+//         return res.status(500).json({
+//             success: false,
+//             message: err.message
+//         });
+//     }
+// };
+
+
 exports.getAssignments = async (req, res) => {
     try {
         const driverId = req.params.driverId;
@@ -110,10 +200,20 @@ exports.getAssignments = async (req, res) => {
             });
         }
 
-        // pagination params
+        // pagination
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+
+        // status filter from frontend
+        const statusParam = req.query.status;
+
+        // map frontend → DB status
+        const statusMap = {
+            "in-progress": "driver_on_the_way",
+            "completed": "driver_reached",
+            "confirmed": "confirmed"
+        };
 
         const driver = await Driver.findOne({ driver_id: driverId });
 
@@ -124,26 +224,42 @@ exports.getAssignments = async (req, res) => {
             });
         }
 
-        // total count (before pagination)
-        const total = await Booking.countDocuments({
+        // build filter
+        let filter = {
             "assignment.driver": driver._id
-        });
+        };
 
-        const bookings = await Booking.find({
-            "assignment.driver": driver._id
-        })
+        if (statusParam && statusMap[statusParam]) {
+            filter.status = statusMap[statusParam];
+        }
+
+        // total count
+        const total = await Booking.countDocuments(filter);
+
+        const bookings = await Booking.find(filter)
+            .select({
+                booking_id: 1,
+                status: 1,
+                schedule: 1,
+                package: 1,
+                address: 1,
+                assignment: 1
+            })
             .populate("assignment.technician", "name technician_id contact")
             .populate("assignment.driver", "name driver_id")
             .sort({ "schedule.date": 1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean(); // 🔥 performance boost
 
         const filteredData = bookings.map(b => ({
-            booking_id: b._id,
+            booking_id: b.booking_id,
 
             package_name: b.package?.name,
 
             schedule_time: formatTime(b.schedule?.start_time),
+
+            schedule_date: b.schedule?.date,
 
             customer_location: {
                 lat: b.address?.lat || null,
@@ -161,13 +277,15 @@ exports.getAssignments = async (req, res) => {
                 id: b.assignment?.driver?.driver_id
             },
 
-            status: b.status === "driver_on_the_way"
-                ? "active"
-                : b.status === "driver_reached"
-                    ? "completed"
-                    : b.status === "confirmed"
-                        ? "schedule"
-                        : b.status
+            // normalized response status
+            status:
+                b.status === "driver_on_the_way"
+                    ? "in-progress"
+                    : b.status === "driver_reached"
+                        ? "completed"
+                        : b.status === "confirmed"
+                            ? "scheduled"
+                            : b.status
         }));
 
         return res.status(200).json({
@@ -365,23 +483,115 @@ exports.getHistory = async (req, res) => {
         const driverId = req.params.driverId;
 
         if (!driverId) {
-            return res.status(400).json({ message: "Driver ID is required" });
+            return res.status(400).json({
+                success: false,
+                message: "Driver ID is required"
+            });
         }
+
+        // pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
 
         const driver = await Driver.findOne({ driver_id: driverId });
 
         if (!driver) {
-            return res.status(404).json({ message: "Driver not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Driver not found"
+            });
         }
 
-        const history = await Booking.find({
+        // filter (FIX: use correct field)
+        const filter = {
             "assignment.driver": driver._id,
-            "trip_details.trip_status": "driver_reached"
-        }).sort({ updatedAt: -1 });
+            "trip_details.status": "driver_reached"
+        };
 
-        res.json(history);
+        // total count
+        const total = await Booking.countDocuments(filter);
+
+        const bookings = await Booking.find(filter)
+            .select({
+                booking_id: 1,
+                status: 1,
+                schedule: 1,
+                package: 1,
+                address: 1,
+                assignment: 1,
+                trip_details: 1,
+                service_progress: 1
+            })
+            .populate("assignment.technician", "name technician_id contact")
+            .populate("assignment.driver", "name driver_id")
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(); // 🔥 improves performance
+
+        // format response
+        const formattedData = bookings.map(b => ({
+            booking_id: b.booking_id,
+
+            package_name: b.package?.name,
+
+            schedule: {
+                date: b.schedule?.date,
+                start_time: b.schedule?.start_time,
+                end_time: b.schedule?.end_time
+            },
+
+            location: {
+                lat: b.address?.lat || null,
+                lng: b.address?.lng || null
+            },
+
+            technician: {
+                name: b.assignment?.technician?.name,
+                technician_id: b.assignment?.technician?.technician_id,
+                contact: b.assignment?.technician?.contact
+            },
+
+            driver: {
+                name: b.assignment?.driver?.name,
+                driver_id: b.assignment?.driver?.driver_id
+            },
+
+            trip: {
+                started_at: b.trip_details?.van_started_at,
+                arrived_at: b.trip_details?.arrived_at,
+                status: b.trip_details?.status
+            },
+
+            service: {
+                status: b.service_progress?.status,
+                started_at: b.service_progress?.started_at,
+                completed_at: b.service_progress?.completed_at
+            },
+
+            final_status:
+                b.service_progress?.status === "completed"
+                    ? "completed"
+                    : b.trip_details?.status === "driver_reached"
+                        ? "reached"
+                        : "pending"
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "Driver history fetched successfully",
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            data: formattedData
+        });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
     }
 };

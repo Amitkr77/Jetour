@@ -10,7 +10,7 @@ const driverController = require("./driverApp.controller");
 router.get("/dashboard/:driverId", driverController.getDashboard);
 router.get("/active-trip/:driverId", driverController.getActiveTrip);
 router.get("/assignments/:driverId", driverController.getAssignments);
-router.get("/history", driverController.getHistory);
+router.get("/history/:driverId", driverController.getHistory);
 
 // router.post("/pre-shift", driverController.createShift);
 
