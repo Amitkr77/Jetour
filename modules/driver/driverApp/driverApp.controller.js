@@ -30,13 +30,10 @@ exports.getDashboard = async (req, res) => {
 
         const todayStr = new Date().toISOString().split("T")[0];
 
-        console.log(todayStr);
-
-
         const bookings = await Booking.find({
             "assignment.driver": driver._id,
             "schedule.date": todayStr
-        }).populate("assignment.service_van", " _id vehicle_model last_service_date");
+        }).populate("assignment.service_van");
 
         const completedTrips = bookings.filter(
             b => b.trip_details?.trip_status === "completed"
@@ -51,7 +48,18 @@ exports.getDashboard = async (req, res) => {
                 van: bookings[0]?.assignment?.service_van || null,
                 total_trips: totalTrips,
                 completed: completedTrips,
-                pending: totalTrips - completedTrips
+                pending: totalTrips - completedTrips,
+                bookings: bookings.map(b => ({
+                    customer_name: b.customer?.name,
+                    customer_phone: b.customer?.phone,
+                    customer_country_code: b.customer?.country_code,
+                    customer_address: b.address,
+                    booking_date: b.schedule.date,
+                    booking_time: b.schedule.start_time,
+                    status: b.status,
+                    booking_id: b._id,
+                    package_name: b.package?.name,
+                }))
             }
         });
 
