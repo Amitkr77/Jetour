@@ -36,7 +36,7 @@ exports.getDashboard = async (req, res) => {
         }).populate("assignment.service_van");
 
         const completedTrips = bookings.filter(
-            b => b.trip_details?.trip_status === "completed"
+            b => b.trip_details?.status === "driver_reached"
         ).length;
 
         const totalTrips = bookings.length;
@@ -45,10 +45,10 @@ exports.getDashboard = async (req, res) => {
             success: true,
             message: "Driver dashboard data",
             data: {
-                van: bookings[0]?.assignment?.service_van || null,
                 total_trips: totalTrips,
                 completed: completedTrips,
                 pending: totalTrips - completedTrips,
+                van: bookings[0]?.assignment?.service_van || null,
                 bookings: bookings.map(b => ({
                     customer_name: b.customer?.name,
                     customer_phone: b.customer?.phone,
