@@ -37,24 +37,6 @@ exports.saveFcmToken = async (req, res) => {
   }
 };
 
-// exports.sendPushNotification = async (token, title, body, data = {}) => {
-//   try {
-//     const message = {
-//       token,
-//       notification: {
-//         title,
-//         body
-//       },
-//       data
-//     };
-
-//     await admin.messaging().send(message);
-
-//   } catch (error) {
-//     console.error("FCM Error:", error.message);
-//   }
-// };
-
 exports.sendNotificationToUser = async (user_id, title, body, data = {}) => {
   try {
     // 1. Get active tokens
@@ -96,11 +78,28 @@ exports.sendNotificationToUser = async (user_id, title, body, data = {}) => {
         }
       });
 
-      await Notification.deleteMany({ token: { $in: failedTokens } });
+      await notificationModel.deleteMany({ token: { $in: failedTokens } });
     }
 
   } catch (error) {
     console.error("Notification Error:", error);
+  }
+};
+
+
+exports.sendTestNotification = async (req, res) => {
+  try {
+    await sendNotificationToUser(
+      req.user.id,
+      "🚗 Booking Update",
+      "Your service has been assigned!",
+      { booking_id: "12345" }
+    );
+
+    res.json({ message: "Notification sent" });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error sending notification", error: error.message });
   }
 };
 

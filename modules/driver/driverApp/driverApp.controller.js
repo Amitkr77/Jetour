@@ -102,6 +102,11 @@ exports.getAssignments = async (req, res) => {
             });
         }
 
+        // pagination params
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
         const driver = await Driver.findOne({ driver_id: driverId });
 
         if (!driver) {
@@ -111,12 +116,19 @@ exports.getAssignments = async (req, res) => {
             });
         }
 
+        // total count (before pagination)
+        const total = await Booking.countDocuments({
+            "assignment.driver": driver._id
+        });
+
         const bookings = await Booking.find({
             "assignment.driver": driver._id
         })
             .populate("assignment.technician", "name technician_id contact")
             .populate("assignment.driver", "name driver_id")
-            .sort({ "schedule.date": 1 });
+            .sort({ "schedule.date": 1 })
+            .skip(skip)
+            .limit(limit);
 
         const filteredData = bookings.map(b => ({
             booking_id: b._id,
@@ -140,6 +152,7 @@ exports.getAssignments = async (req, res) => {
                 name: b.assignment?.driver?.name,
                 id: b.assignment?.driver?.driver_id
             },
+
             status: b.status === "driver_on_the_way"
                 ? "active"
                 : b.status === "driver_reached"
@@ -152,7 +165,10 @@ exports.getAssignments = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Assignments fetched successfully",
-            total: filteredData.length,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
             data: filteredData
         });
 
