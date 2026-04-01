@@ -144,9 +144,17 @@ exports.sendOtp = async (req, res) => {
 
 exports.resendOtp = async (req, res) => {
   try {
-    const { contact_number } = req.body;
+    const { contact_number, country_code } = req.body;
 
-    const customer = await Customer.findOne({ contact_number });
+    if (!contact_number || !country_code) {
+      return res.status(400).json({
+        success: false,
+        message: "contact_number and country_code are required"
+      });
+    }
+
+    // Find customer
+    const customer = await Customer.findOne({ contact_number, country_code });
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -154,7 +162,7 @@ exports.resendOtp = async (req, res) => {
       });
     }
 
-    const existingOtp = await Otp.findOne({ contact_number });
+    const existingOtp = await Otp.findOne({ contact_number, country_code });
 
     if (!existingOtp) {
       return res.status(400).json({
@@ -165,7 +173,9 @@ exports.resendOtp = async (req, res) => {
 
     // ⏳ Cooldown: 60 seconds
     const cooldown = 60 * 1000;
-    const timeSinceLastOtp = Date.now() - existingOtp.last_sent_at;
+
+    const lastSent = existingOtp.last_sent_at || 0;
+    const timeSinceLastOtp = Date.now() - new Date(lastSent).getTime();
 
     if (timeSinceLastOtp < cooldown) {
       return res.status(429).json({
@@ -187,23 +197,34 @@ exports.resendOtp = async (req, res) => {
 
     existingOtp.otp = newOtp;
     existingOtp.expires_at = new Date(Date.now() + 5 * 60 * 1000);
-    existingOtp.resend_count += 1;
+    existingOtp.resend_count = (existingOtp.resend_count || 0) + 1;
     existingOtp.last_sent_at = new Date();
 
     await existingOtp.save();
 
-    // TODO: Send SMS here
+    // 📱 Format phone number
+    let phone = contact_number.replace(/\D/g, '');
+    let formattedPhone = country_code.startsWith('+')
+      ? country_code + phone
+      : '+' + country_code + phone;
+
+    // 📩 Send SMS via Twilio
+    await twilioClient.messages.create({
+      body: `Your OTP for login is ${newOtp}. It will expire in 5 minutes.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: formattedPhone
+    });
 
     res.status(200).json({
       success: true,
-      message: `OTP resent to ${contact_number} is ${newOtp} for testing purposes`
+      message: `OTP resent successfully to ${formattedPhone} (OTP: ${newOtp} for testing)`
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Resend OTP error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong"
+      message: "Failed to resend OTP"
     });
   }
 };

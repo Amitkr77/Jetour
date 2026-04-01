@@ -66,8 +66,6 @@ const customerSchema = new mongoose.Schema({
   passport_number: {
     type: String,
     trim: true,
-    unique: true,
-    sparse: true
   },
 
   nationality: {
