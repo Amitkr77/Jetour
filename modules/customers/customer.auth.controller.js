@@ -3,6 +3,10 @@ const Customer = require('./customer.model')
 const jwt = require('jsonwebtoken');
 const twilioClient = require('../../utils/twilloClinet');
 
+const TEST_PHONE = "7688871771";
+const TEST_COUNTRY_CODE = "+91";
+const TEST_OTP = "123456";
+
 exports.verifyOtp = async (req, res) => {
   try {
     const { contact_number, country_code, otp } = req.body;
@@ -11,6 +15,35 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "contact_number, country_code, and otp are required"
+      });
+    }
+
+    // ✅ TEST BYPASS
+    if (
+      contact_number === TEST_PHONE &&
+      country_code === TEST_COUNTRY_CODE &&
+      otp === TEST_OTP
+    ) {
+      let customer = await Customer.findOne({ contact_number, country_code });
+
+      // auto create if not exists (optional)
+      if (!customer) {
+        customer = await Customer.create({ contact_number, country_code });
+      }
+
+      const token = jwt.sign(
+        { id: customer.id },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful (TEST MODE)",
+        token,
+        data: {
+          user_id: customer.id,
+        }
       });
     }
 
@@ -104,6 +137,18 @@ exports.sendOtp = async (req, res) => {
       customer = await Customer.create({ contact_number, country_code });
     }
 
+    // ✅ TEST MODE OTP
+    if (
+      contact_number === TEST_PHONE &&
+      country_code === TEST_COUNTRY_CODE
+    ) {
+      return res.status(200).json({
+        success: true,
+        message: `OTP sent successfully (TEST MODE)`,
+        otp: TEST_OTP
+      });
+    }
+
     // Generate 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
@@ -159,6 +204,17 @@ exports.resendOtp = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Customer not found"
+      });
+    }
+
+    if (
+      contact_number === TEST_PHONE &&
+      country_code === TEST_COUNTRY_CODE
+    ) {
+      return res.status(200).json({
+        success: true,
+        message: `OTP resent successfully (TEST MODE)`,
+        otp: TEST_OTP
       });
     }
 
