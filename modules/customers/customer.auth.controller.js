@@ -3,8 +3,8 @@ const Customer = require('./customer.model')
 const jwt = require('jsonwebtoken');
 const twilioClient = require('../../utils/twilloClinet');
 
-// const TEST_PHONE = "7688871771";
-const TEST_PHONE = "7903500042";
+const TEST_PHONE = "7688871771";
+// const TEST_PHONE = "7903500042";
 const TEST_COUNTRY_CODE = "+91";
 const TEST_OTP = "123456";
 
@@ -172,7 +172,7 @@ exports.sendOtp = async (req, res) => {
     );
 
     // Format phone with country code
-    let phone = contact_number.replace(/\D/g, ''); 
+    let phone = contact_number.replace(/\D/g, '');
     let formattedPhone = country_code.startsWith('+')
       ? country_code + phone
       : '+' + country_code + phone;
@@ -186,7 +186,7 @@ exports.sendOtp = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `OTP sent successfully to ${formattedPhone} (OTP: ${otp} for testing)`
+      message: `OTP sent successfully to ${formattedPhone}`
     });
 
   } catch (error) {
@@ -249,7 +249,7 @@ exports.resendOtp = async (req, res) => {
     }
 
     // 🚫 Max resend limit
-    if (existingOtp.resend_count >= 3) {
+    if ((existingOtp.resend_count || 0) >= 3) {
       return res.status(429).json({
         success: false,
         message: "Maximum OTP resend attempts reached"
