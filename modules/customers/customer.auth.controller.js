@@ -3,7 +3,8 @@ const Customer = require('./customer.model')
 const jwt = require('jsonwebtoken');
 const twilioClient = require('../../utils/twilloClinet');
 
-const TEST_PHONE = "7688871771";
+// const TEST_PHONE = "7688871771";
+const TEST_PHONE = "7903500042";
 const TEST_COUNTRY_CODE = "+91";
 const TEST_OTP = "123456";
 
