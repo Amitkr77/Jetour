@@ -138,15 +138,7 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    // Find existing customer
-    let customer = await Customer.findOne({ contact_number, country_code });
-
-    // auto register if not exists
-    if (!customer) {
-      customer = await Customer.create({ contact_number, country_code });
-    }
-
-    // ✅ TEST MODE OTP
+     // ✅ TEST MODE OTP
     if (isTestUser(contact_number, country_code)) {
       return res.status(200).json({
         success: true,
@@ -155,6 +147,16 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
+
+    // Find existing customer
+    let customer = await Customer.findOne({ contact_number, country_code });
+
+    // auto register if not exists
+    if (!customer) {
+      customer = await Customer.create({ contact_number, country_code });
+    }
+
+   
     // Generate 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
