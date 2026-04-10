@@ -7,6 +7,13 @@ const TEST_PHONE = "7688871771";
 const TEST_COUNTRY_CODE = "+91";
 const TEST_OTP = "123456";
 
+const isTestUser = (contact_number, country_code) => {
+  return (
+    contact_number === TEST_PHONE &&
+    country_code === TEST_COUNTRY_CODE
+  );
+};
+
 exports.verifyOtp = async (req, res) => {
   try {
     const { contact_number, country_code, otp } = req.body;
@@ -19,14 +26,16 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // ✅ TEST BYPASS
-    if (
-      contact_number === TEST_PHONE &&
-      country_code === TEST_COUNTRY_CODE &&
-      otp === TEST_OTP
-    ) {
+    if (isTestUser(contact_number, country_code)) {
+      if (otp !== TEST_OTP) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP (TEST MODE)"
+        });
+      }
+
       let customer = await Customer.findOne({ contact_number, country_code });
 
-      // auto create if not exists (optional)
       if (!customer) {
         customer = await Customer.create({ contact_number, country_code });
       }
@@ -46,7 +55,6 @@ exports.verifyOtp = async (req, res) => {
         }
       });
     }
-
 
     //////////////////////////////////////////////////////
     // 🔎 Find OTP record using contact_number + country_code
@@ -138,13 +146,10 @@ exports.sendOtp = async (req, res) => {
     }
 
     // ✅ TEST MODE OTP
-    if (
-      contact_number === TEST_PHONE &&
-      country_code === TEST_COUNTRY_CODE
-    ) {
+    if (isTestUser(contact_number, country_code)) {
       return res.status(200).json({
         success: true,
-        message: `OTP sent successfully (TEST MODE)`,
+        message: "OTP sent successfully (TEST MODE)",
         otp: TEST_OTP
       });
     }
@@ -207,13 +212,10 @@ exports.resendOtp = async (req, res) => {
       });
     }
 
-    if (
-      contact_number === TEST_PHONE &&
-      country_code === TEST_COUNTRY_CODE
-    ) {
+    if (isTestUser(contact_number, country_code)) {
       return res.status(200).json({
         success: true,
-        message: `OTP resent successfully (TEST MODE)`,
+        message: "OTP resent successfully (TEST MODE)",
         otp: TEST_OTP
       });
     }
