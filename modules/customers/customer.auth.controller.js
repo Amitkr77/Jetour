@@ -138,8 +138,11 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-     // ✅ TEST MODE OTP
+    // ✅ TEST MODE OTP
     if (isTestUser(contact_number, country_code)) {
+
+      console.log(contact_number, country_code);
+
       return res.status(200).json({
         success: true,
         message: "OTP sent successfully (TEST MODE)",
@@ -156,7 +159,7 @@ exports.sendOtp = async (req, res) => {
       customer = await Customer.create({ contact_number, country_code });
     }
 
-   
+
     // Generate 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
@@ -169,7 +172,7 @@ exports.sendOtp = async (req, res) => {
     );
 
     // Format phone with country code
-    let phone = contact_number.replace(/\D/g, ''); // remove any non-digit chars
+    let phone = contact_number.replace(/\D/g, ''); 
     let formattedPhone = country_code.startsWith('+')
       ? country_code + phone
       : '+' + country_code + phone;
