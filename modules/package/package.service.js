@@ -98,6 +98,9 @@ exports.getPackageByIdOrCode = async (idOrCode) => {
 
 exports.updatePackage = async (idOrCode, payload) => {
 
+  console.log(payload);
+
+
   let pkg;
 
   if (mongoose.Types.ObjectId.isValid(idOrCode)) {
@@ -109,6 +112,11 @@ exports.updatePackage = async (idOrCode, payload) => {
   }
 
   if (!pkg) throw new Error("Package not found");
+
+  if (payload.name !== undefined) pkg.name = payload.name;
+  if (payload.status !== undefined) pkg.status = payload.status;
+  if (payload.worktime !== undefined) pkg.worktime = payload.worktime;
+  if (payload.details !== undefined) pkg.details = payload.details;
 
   if (payload.pricing) {
     for (const row of payload.pricing) {
