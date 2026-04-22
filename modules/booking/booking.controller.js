@@ -1247,3 +1247,63 @@ exports.updateBookingAssignment = async (req, res) => {
     });
   }
 };
+
+// controllers/booking.controller.js
+
+exports.getBookingImages = async (req, res) => {
+  try {
+    const { booking_id } = req.params;
+
+    if (!booking_id) {
+      return res.status(400).json({
+        success: false,
+        message: "booking_id is required"
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(booking_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID"
+      });
+    }
+
+    const booking = await Booking.findById(booking_id)
+      .select("service_progress.before_photos service_progress.after_photos service_progress.status booking_id")
+      .lean();
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      });
+    }
+
+    const { before_photos, after_photos, status } = booking.service_progress;
+
+    return res.status(200).json({
+      success: true,
+      booking_id: booking.booking_id,
+      service_status: status,
+      images: {
+        before_photos: {
+          interior: before_photos?.interior || [],
+          exterior: before_photos?.exterior || [],
+          total: (before_photos?.interior?.length || 0) + (before_photos?.exterior?.length || 0)
+        },
+        after_photos: {
+          interior: after_photos?.interior || [],
+          exterior: after_photos?.exterior || [],
+          total: (after_photos?.interior?.length || 0) + (after_photos?.exterior?.length || 0)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Get booking images error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};

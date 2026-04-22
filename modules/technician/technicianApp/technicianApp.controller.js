@@ -1,6 +1,7 @@
 const Booking = require("../../booking/booking.model");
 const mongoose = require("mongoose");
 const Technician = require("../technician.model");
+const CustomerServiceHistory = require("../../customers/service/history.model");
 
 // ===============================
 // 1️⃣ DASHBOARD
@@ -578,6 +579,32 @@ exports.completeJob = async (req, res) => {
     booking.status = "completed";
 
     await booking.save();
+
+    await CustomerServiceHistory.findOneAndUpdate(
+      {
+        customer_id: booking.customer.customer_id,
+        vehicle_id: booking.vehicle.vehicle_id
+      },
+      {
+        $set: {
+          booking_id: booking._id,
+          package: {
+            package_id: booking.package.package_id,
+            name: booking.package.name
+          },
+          last_service_date: new Date(),
+          mileage_at_service: booking.vehicle.mileage,
+          next_service_recommendation: booking.service_progress.next_service_recommendation,
+          summary: booking.service_progress.summary,
+          technician_id: booking.assignment.technician,
+          photos: {
+            before: booking.service_progress.before_photos,
+            after: booking.service_progress.after_photos
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
 
     res.json({
       success: true,
