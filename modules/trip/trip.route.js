@@ -32,11 +32,11 @@ router.post("/start", async (req, res) => {
             { upsert: true, new: true }
         );
 
-        res.json({ message: "Trip started", tripId: trip.tripId });
+        res.json({ success: true, message: "Trip started", tripId: trip.tripId });
 
     } catch (err) {
         console.error("Start trip error:", err);
-        res.status(500).json({ error: "Failed to start trip" });
+        res.status(500).json({ success: false, error: "Failed to start trip" });
     }
 });
 
@@ -46,7 +46,7 @@ router.post("/stop", async (req, res) => {
         const { tripId, driverId } = req.body;
 
         if (!tripId || !driverId) {
-            return res.status(400).json({ error: "tripId and driverId are required" });
+            return res.status(400).json({ success: false, error: "tripId and driverId are required" });
         }
 
         const trip = await Trip.findOne({ tripId });
